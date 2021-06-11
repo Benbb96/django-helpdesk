@@ -107,10 +107,15 @@ class GenericIncidentFilter(df.FilterSet):
         queryset=TicketCategory.objects.all(),
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+    archived = df.BooleanFilter(
+        field_name='archived',
+        label='Archivés',
+        widget=forms.CheckboxInput(attrs={'class': 'flat'})
+    )
 
     class Meta:
         model = GenericIncident
-        fields = ('text', 'created_between', 'category')
+        fields = ('text', 'created_between', 'category', 'archived')
 
     def filter_text(self, queryset, name, value):
         return queryset.filter(

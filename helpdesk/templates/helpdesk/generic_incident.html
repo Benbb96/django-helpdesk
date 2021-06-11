@@ -19,6 +19,26 @@
             <h2>Détail de l'incident générique <b>{{ generic_incident }}</b></h2>
             <ul class="nav navbar-right panel_toolbox">
                 {% if request.user.is_staff %}
+                    {% if generic_incident.archived %}
+                        <li>
+                            <a class="askConfirmation"
+                               data-message="Êtes-vous sûr de vouloir désarchiver l'IG {{ generic_incident }} ?"
+                                href="{% url 'helpdesk:generic_incident_toggle_archived' generic_incident.id %}">
+                                <i class="fa fa-archive"></i>
+                                Désarchiver l'incident
+                            </a>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a class="askConfirmation"
+                               data-message="Êtes-vous sûr de vouloir archiver l'IG {{ generic_incident }} ?"
+                                href="{% url 'helpdesk:generic_incident_toggle_archived' generic_incident.id %}">
+                                <i class="fa fa-archive"></i>
+                                Archiver l'incident
+                            </a>
+                        </li>
+                    {% endif %}
+                    <li class="divider"></li>
                     <li>
                         <a href="{% url 'helpdesk:generic_incident_update' generic_incident.id %}">
                             <i class="fa fa-edit"></i>
