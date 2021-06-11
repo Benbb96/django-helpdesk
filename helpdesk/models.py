@@ -395,6 +395,7 @@ class GenericIncident(AbstractGenericIncident):
         help_text='List of people who wish to receive updates about this generic incident',
         blank=True
     )
+    archived = models.BooleanField(verbose_name='Archivé', default=False)
 
     class Meta:
         verbose_name = 'Incident Générique'

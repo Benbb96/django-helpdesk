@@ -121,9 +121,9 @@ class FeedbackSurveyAdmin(admin.ModelAdmin):
 @admin.register(GenericIncident)
 class GenericIncidentAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'start_date', 'end_date', 'category', 'external_link', 'created_at', 'updated_at'
+        'name', 'start_date', 'end_date', 'category', 'external_link', 'created_at', 'updated_at', 'archived'
     )
-    list_filter = ('end_date',)
+    list_filter = ('end_date', 'archived')
     search_fields = ('name', 'category__name')
     date_hierarchy = 'start_date'
     ordering = ('-start_date',)

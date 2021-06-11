@@ -35,13 +35,18 @@
                     {{ filter.form.created_between }}
                     {{ filter.form.created_between.errors }}
                 </div>
-                <div class="col-sm-3 col-xs-12">
+                <div class="col-sm-2 col-xs-12">
                     {{ filter.form.category.label_tag }}
                     {{ filter.form.category }}
                     {{ filter.form.category.errors }}
                 </div>
-                <div class="col-sm-3 col-xs-12 text-center">
+                <div class="col-sm-1 col-xs-12 text-center">
+                    {{ filter.form.archived.label_tag }}
                     <br>
+                    {{ filter.form.archived }}
+                    {{ filter.form.archived.errors }}
+                </div>
+                <div class="col-sm-3 col-xs-12 text-center">
                     <button type="submit" class="btn btn-primary">
                         Filtrer
                         <i class="fa fa-filter"></i>

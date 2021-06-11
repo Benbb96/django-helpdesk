@@ -2502,6 +2502,14 @@ def generic_incident_detail(request, generic_incident_id):
 
 
 @login_required
+def generic_incident_toggle_archived(request, generic_incident_id):
+    generic_incident = get_object_or_404(GenericIncident, id=generic_incident_id)
+    generic_incident.archived = not generic_incident.archived
+    generic_incident.save()
+    return redirect(generic_incident)
+
+
+@login_required
 @require_ajax
 def generic_incident_toggle_subscribe(request, generic_incident_id):
     generic_incident = get_object_or_404(
