@@ -134,7 +134,7 @@ class PhoenixTicketForm(forms.Form):
 
     generic_incident = forms.ModelChoiceField(
         label='Incident générique lié',
-        queryset=GenericIncident.objects.all(),
+        queryset=GenericIncident.objects.exclude(archived=True),
         widget=MyModelSelect2Widget,
         required=False
     )
