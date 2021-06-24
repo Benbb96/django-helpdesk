@@ -236,9 +236,9 @@ class QuickCommentForm(forms.ModelForm):
 
 
 class MultipleEmailForm(forms.Form):
-    email_input = forms.CharField(widget=forms.Textarea(attrs={
-        'class': 'form-control resize-none'
-    }))
+    email_input = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control resize-none', 'title': 'Saisissez une adresse par ligne'})
+    )
 
 
 class CreateFollowUpForm(forms.ModelForm):
