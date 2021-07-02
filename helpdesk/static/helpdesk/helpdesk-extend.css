@@ -71,7 +71,7 @@ table.ticket-stats tbody th, table.ticket-stats tbody tr {padding-left: 20px}
 #helpdesk-nav-collapse #searchform {
     padding-top: 0;
 }
-#ticket-description {background-color: #FCF8E3;}
+#ticket-description {background-color: var(--background-comment);}
 .followup.well {background-color: #f4f5ff;}
 /*
 Add your custom styles here
