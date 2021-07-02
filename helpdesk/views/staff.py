@@ -504,17 +504,17 @@ def view_ticket(request, ticket_id):
     ticketcc_string, show_subscribe = \
         return_ticketccstring_and_show_subscribe(request.user, ticket)
 
-    ticketCC_form = MultipleEmailForm(request.POST or None)
+    ticketcc_form = MultipleEmailForm(request.POST or None)
 
-    if ticketCC_form.is_valid():
-        email_input = ticketCC_form.cleaned_data['email_input']
+    if ticketcc_form.is_valid():
+        email_input = ticketcc_form.cleaned_data['email_input']
         valid = True
         valid_emails = []
         for email in email_input.splitlines():
             try:
                 validate_email(email)
             except ValidationError:
-                ticketCC_form.add_error('email_input', ValidationError(f"{email} n'est pas une adresse mail valide."))
+                ticketcc_form.add_error('email_input', ValidationError(f"{email} n'est pas une adresse mail valide."))
                 valid = False
                 continue
             valid_emails.append(email)
@@ -531,7 +531,7 @@ def view_ticket(request, ticket_id):
         'form': form,
         'followup_form': followup_form,
         'information_form': information_form,
-        'ticketCC_form': ticketCC_form,
+        'ticketcc_form': ticketcc_form,
         'active_users': users,
         'priorities': Ticket.PRIORITY_CHOICES,
         'preset_replies': PreSetReply.objects.filter(
