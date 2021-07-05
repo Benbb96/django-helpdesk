@@ -225,18 +225,20 @@ class EditTicketForm(CustomFieldMixin, PhoenixTicketForm, forms.ModelForm):
 class QuickCommentForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ("quick_comment",)
+        fields = ('quick_comment',)
         widgets = {
-            "quick_comment": forms.Textarea(attrs={
-                "class": "form-control resize-vertical"
+            'quick_comment': forms.Textarea(attrs={
+                'class': 'form-control resize-vertical',
+                'cols': 30,
+                'rows': 4
             })
         }
 
 
 class MultipleEmailForm(forms.Form):
-    email_input = forms.CharField(widget=forms.Textarea(attrs={
-        "class": "form-control resize-none"
-    }))
+    email_input = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control resize-none', 'title': 'Saisissez une adresse par ligne'})
+    )
 
 
 class CreateFollowUpForm(forms.ModelForm):
