@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 
 import datetime
 
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Permission, User
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -418,6 +418,24 @@ class TicketType(models.Model):
         return self.name
 
 
+class SimpleUserMail(models.Model):
+    customer = models.ForeignKey(
+        'sphinx.Customer',
+        on_delete=models.PROTECT,
+        verbose_name='Client',
+        null=True,
+        blank=True
+    )
+    email = models.EmailField('mail', unique=True)
+
+    class Meta:
+        verbose_name = "Email d'un simple utilisateur"
+        verbose_name_plural = "Emails de simples utilisateurs"
+
+    def __str__(self):
+        return self.email
+
+
 class TicketQuerySet(models.QuerySet):
     def opened(self):
         return self.filter(status__in=[Ticket.OPEN_STATUS, Ticket.REOPENED_STATUS])
@@ -801,6 +819,11 @@ class Ticket(models.Model):
             # This is a new ticket as no ID yet exists.
             self.created = timezone.now()
 
+            # Add submitter_email in SimpleUserName if it didn't exist and no user has this email
+            if self.submitter_email and not SimpleUserMail.objects.filter(email=self.submitter_email).exists() and not \
+                User.objects.filter(email=self.submitter_email).exists:
+                SimpleUserMail.objects.create(email=self.submitter_email)
+
         if not self.priority:
             self.priority = 3
 
@@ -822,6 +845,15 @@ class Ticket(models.Model):
         elif self.status in [self.OPEN_STATUS, self.REOPENED_STATUS] and (self.closed or self.resolved):
             self.closed = None
             self.resolved = None
+
+        # update SimpleUserMail when customer is set
+        if self.customer and self.submitter_email:
+            SimpleUserMail.objects.filter(email=self.submitter_email, customer__isnull=True)\
+                .update(customer=self.customer)
+
+        # set ticket customer if a simple user mail is matching
+        if not self.customer and SimpleUserMail.objects.filter(email=self.submitter_email, customer__isnull=False).exists():
+            self.customer = SimpleUserMail.objects.get(email=self.submitter_email, customer__isnull=False).customer
 
         super(Ticket, self).save(*args, **kwargs)
 

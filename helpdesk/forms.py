@@ -16,7 +16,7 @@ from django_select2.forms import ModelSelect2MultipleWidget, ModelSelect2Widget
 
 from helpdesk.lib import send_templated_mail, safe_template_context, process_attachments, get_assignable_users
 from helpdesk.models import Ticket, Queue, FollowUp, IgnoreEmail, TicketCC, CustomField, TicketCustomFieldValue, \
-    TicketDependency, FeedbackSurvey, GenericIncident
+    TicketDependency, FeedbackSurvey, GenericIncident, SimpleUserMail
 from helpdesk import settings as helpdesk_settings
 from phonenumber_field.formfields import PhoneNumberField
 from phonenumber_field.widgets import PhoneNumberInternationalFallbackWidget
@@ -797,3 +797,14 @@ class GenericIncidentForm(forms.ModelForm):
             'external_link': forms.TextInput(attrs={'class': 'form-control'}),
             'category': forms.Select(attrs={'class': 'form-control'}),
         }
+
+
+class SimpleUserChangeMail(forms.ModelForm):
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput({'class': 'form-control'})
+    )
+
+    class Meta:
+        model = SimpleUserMail
+        fields = ('email',)

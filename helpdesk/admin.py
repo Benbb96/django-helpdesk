@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 from helpdesk.models import Queue, Ticket, FollowUp, PreSetReply, KBCategory, TicketCategory, \
     TicketType, FeedbackSurvey, TicketChange, Attachment, IgnoreEmail, CustomField, EscalationExclusion, \
-    EmailTemplate, KBItem, GenericIncident
+    EmailTemplate, KBItem, GenericIncident, SimpleUserMail
 
 
 @admin.register(Queue)
@@ -129,6 +129,12 @@ class GenericIncidentAdmin(admin.ModelAdmin):
     ordering = ('-start_date',)
     autocomplete_fields = ('category', 'subscribers')
     list_select_related = ('category',)
+
+
+@admin.register(SimpleUserMail)
+class SimpleUserMailAdmin(admin.ModelAdmin):
+    list_display = ('customer', 'email')
+    search_fields = ('email',)
 
 
 admin.site.register(PreSetReply)
