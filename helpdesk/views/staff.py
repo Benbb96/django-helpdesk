@@ -2532,7 +2532,7 @@ def generic_incident_detail(request, generic_incident_id):
             email_message = EmailMessage(
                 subject=f'[Phoenix] Nouveau suivi Incident Générique {generic_incident}',
                 body=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=settings.HELPDESK_FROM_EMAIL,
                 bcc=email_list_set
             )
             try:
