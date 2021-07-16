@@ -267,7 +267,7 @@ def quick_update_ticket(request, ticket_id):
     except ValueError:
         return JsonResponse({'success': False, 'error': "Veuillez choisir une option dans la liste."})
     if not hasattr(ticket, field):
-        return JsonResponse({'success': False, 'error': "Le champ %s n'existe pas sur le ticket."})
+        return JsonResponse({'success': False, 'error': f"Le champ {field} n'existe pas sur le ticket."})
 
     setattr(ticket, field + ('_id' if field != 'billing' else ''), value)
     ticket.save(update_fields=[field])
@@ -363,7 +363,7 @@ def view_ticket(request, ticket_id):
                     if ticket.assigned_to.employee.receive_ticket_notification:
                         Notification.objects.create(
                             module=Notification.TICKET,
-                            message="Le ticket %s vient d'être fermé par %s" % (ticket, request.user),
+                            message=f"Le ticket {ticket} vient d'être fermé par {request.user}",
                             link_redirect=ticket.get_absolute_url(),
                             user_list=[ticket.assigned_to]
                         )
@@ -486,7 +486,7 @@ def view_ticket(request, ticket_id):
                 if ticket.assigned_to.employee.receive_ticket_notification:
                     Notification.objects.create(
                         module=Notification.TICKET,
-                        message='Une nouvelle réponse a été ajouté au ticket %s par %s' % (ticket, request.user),
+                        message=f'Une nouvelle réponse a été ajouté au ticket {ticket} par {request.user}',
                         link_redirect=ticket.get_absolute_url(),
                         user_list=[ticket.assigned_to]
                     )
@@ -603,11 +603,8 @@ def ticket_spent_times(request, ticket_id, spent_time_id=None):
             spent_time.duration = None
             spent_time.save(update_fields=['duration'])
 
-        if edit_spent_time:
-            text = 'modifié'
-        else:
-            text = 'ajouté'
-        messages.success(request, "L'enregistrement de temps a bien été %s au ticket." % text)
+        text = 'modifié' if edit_spent_time else 'ajouté'
+        messages.success(request, f"L'enregistrement de temps a bien été {text} au ticket.")
 
         return redirect('helpdesk:ticket_spent_times', ticket_id)
 
@@ -627,7 +624,7 @@ def choose_customer_for_ticket(request, ticket_id, customer_id):
 
     ticket.customer = customer
     ticket.save(update_fields=['customer'])
-    messages.success(request, 'Le client {} est désormais associé au ticket {}'.format(customer, ticket.ticket_for_url))
+    messages.success(request, f'Le client {customer} est désormais associé au ticket {ticket.ticket_for_url}')
 
     return redirect(ticket)
 
@@ -640,8 +637,7 @@ def update_ticket(request, ticket_id, append_signature=True, public=False):
             request.user.is_active and (
                 request.user.is_staff or
                 helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE))):
-        return HttpResponseRedirect('%s?next=%s' %
-                                    (reverse('helpdesk:login'), request.path))
+        return HttpResponseRedirect(f'{reverse("helpdesk:login")}?next={request.path}')
 
     ticket = get_object_or_404(Ticket, id=ticket_id)
 
@@ -715,7 +711,7 @@ def update_ticket(request, ticket_id, append_signature=True, public=False):
         if owner != 0 and ((ticket.assigned_to and owner != ticket.assigned_to.id) or not ticket.assigned_to):
             new_user = User.objects.get(id=owner)
             # TODO fix translate
-            followup.title = 'Assigné à %s' % new_user
+            followup.title = f'Assigné à {new_user}'
             ticket.assigned_to = new_user
             reassigned = True
         # user changed owner to 'unassign'
@@ -728,13 +724,13 @@ def update_ticket(request, ticket_id, append_signature=True, public=False):
     if new_status != ticket.status:
         ticket.status = new_status
         ticket.save()
-        messages.info(request, 'Le ticket est désormais dans le statut %s' % ticket.get_status_display())
+        messages.info(request, f'Le ticket est désormais dans le statut {ticket.get_status_display()}')
         followup.new_status = new_status
         if followup.title:
             # TODO translate
-            followup.title += ' et %s' % ticket.get_status_display()
+            followup.title += f' et {ticket.get_status_display()}'
         else:
-            followup.title = '%s' % ticket.get_status_display()
+            followup.title = ticket.get_status_display()
 
     if not followup.title:
         if followup.comment:
@@ -1003,7 +999,7 @@ def mass_update(request):
         if tickets_count == 1:
             msg = 'Un ticket a été supprimé.'
         else:
-            msg = '%d tickets ont été supprimés' % tickets_count
+            msg = f'{tickets_count} tickets ont été supprimés'
         messages.success(request, msg)
         return redirect('helpdesk:list')
     elif action == 'fusion':
@@ -1013,7 +1009,7 @@ def mass_update(request):
             messages.warning(request, "Oulà, ça risque d'être compliqué pour moi plus de 4 tickets...")
         else:
             return redirect(
-                reverse('helpdesk:fusion') + '?' + '&'.join(['tickets=%s' % ticket_id for ticket_id in tickets])
+                reverse('helpdesk:fusion') + '?' + '&'.join([f'tickets={ticket_id}' for ticket_id in tickets])
             )
         return redirect('helpdesk:list')
 
@@ -1031,7 +1027,7 @@ def mass_update(request):
                 ticket.send_notification_changed_assigned_to(request.user)
             followup = ticket.followup_set.create(
                 date=timezone.now(),
-                title="Assigné à %s dans l'édition en masse" % user,  # TODO fix translate
+                title=f"Assigné à {user} dans l'édition en masse",  # TODO fix translate
                 public=True,
                 user=request.user
             )
@@ -1218,7 +1214,7 @@ def fusion_tickets(request):
                     ticket.followup_set.update(
                         ticket=chosen_ticket,
                         # Next might exceed maximum 200 characters limit
-                        title=Concat(Value('[Fusion de #%d] ' % ticket.id), 'title')
+                        title=Concat(Value(f'[Fusion de #{ticket.id}] '), 'title')
                     )
 
                     # Add submitter_email, assigned_to email and ticketcc to chosen ticket if necessary
@@ -1272,7 +1268,7 @@ def ticket_list(request):
         try:
             saved_query = SavedSearch.objects.filter(Q(shared=True) | Q(user=request.user)).get(pk=int(saved_query_id))
         except (ValueError, SavedSearch.DoesNotExist):
-            messages.warning(request, "Impossible de charger la requête sauvegardée n°%s" % saved_query_id)
+            messages.warning(request, f"Impossible de charger la requête sauvegardée n°{saved_query_id}")
             return redirect('helpdesk:list')
 
         import json
@@ -1466,7 +1462,7 @@ def create_ticket(request):
             if not ticket.assigned_to:
                 Notification.objects.create_for_technical_service(
                     filter_params={'employee__receive_ticket_notification': True},
-                    message="Un nouveau ticket vient d'être ouvert sur Phoenix : %s" % ticket,
+                    message=f"Un nouveau ticket vient d'être ouvert sur Phoenix : {ticket}",
                     module=Notification.TICKET,
                     link_redirect=ticket.get_absolute_url()
                 )
@@ -1873,7 +1869,7 @@ def run_report(request, report):
         messages.info(request, 'Aucun ticket à analyser')
         redirect("helpdesk:report_index")
     if report not in reports.keys():
-        messages.error(request, 'Aucun rapport du nom de "%s"' % report)
+        messages.error(request, f'Aucun rapport du nom de "{report}"')
         return redirect("helpdesk:report_index")
 
     from_date, to_date = handle_date_range_picker_filter(request.POST.get('dateRange'))
@@ -1900,7 +1896,7 @@ def run_report(request, report):
         try:
             saved_query = SavedSearch.objects.filter(Q(shared=True) | Q(user=request.user)).get(pk=saved_query_id)
         except (ValueError, SavedSearch.DoesNotExist):
-            messages.warning(request, "Impossible de charger la requête sauvegardée n°%s" % saved_query_id)
+            messages.warning(request, f"Impossible de charger la requête sauvegardée n°{saved_query_id}")
             return redirect('helpdesk:report_index')
 
         import json
@@ -1945,7 +1941,7 @@ def run_report(request, report):
         periods = []
         year, month = first_year, first_month
         working = True
-        periods.append("%s-%s" % (year, month))
+        periods.append(f"{year}-{month}")
         while working:
             month += 1
             if month > 12:
@@ -1953,7 +1949,7 @@ def run_report(request, report):
                 month = 1
             if (year > last_year) or (month > last_month and year >= last_year):
                 working = False
-            periods.append("%s-%s" % (year, month))
+            periods.append(f"{year}-{month}")
 
         # Prepare possible options and add it to column headings
         possible_options = None
@@ -2003,16 +1999,16 @@ def run_report(request, report):
                 metric2 = ticket.get_status_display()
             elif report == USER_CATEGORY:
                 metric1 = ticket.get_assigned_to
-                metric2 = '%s' % (ticket.category if ticket.category else 'Non définie')
+                metric2 = ticket.category.name if ticket.category else 'Non définie'
             elif report == USER_TYPE:
                 metric1 = ticket.get_assigned_to
-                metric2 = '%s' % (ticket.type if ticket.type else 'Non défini')
+                metric2 = ticket.type.name if ticket.type else 'Non défini'
             elif report == USER_BILLING:
                 metric1 = ticket.get_assigned_to
-                metric2 = '%s' % (ticket.get_billing_display() if ticket.billing else 'Non définie')
+                metric2 = ticket.get_billing_display() if ticket.billing else 'Non définie'
             elif report == USER_MONTH:
                 metric1 = ticket.get_assigned_to
-                metric2 = '%s-%s' % (ticket.created.year, ticket.created.month)
+                metric2 = f'{ticket.created.year}-{ticket.created.month}'
             elif report == QUEUE_PRIORITY:
                 metric1 = ticket.queue.title
                 metric2 = ticket.get_priority_display()
@@ -2021,23 +2017,23 @@ def run_report(request, report):
                 metric2 = ticket.get_status_display()
             elif report == QUEUE_MONTH:
                 metric1 = ticket.queue.title
-                metric2 = '%s-%s' % (ticket.created.year, ticket.created.month)
+                metric2 = f'{ticket.created.year}-{ticket.created.month}'
             elif report == QUEUE_CATEGORY:
                 metric1 = ticket.queue.title
-                metric2 = '%s' % (ticket.category if ticket.category else 'Non définie')
+                metric2 = ticket.category.name if ticket.category else 'Non définie'
             elif report == QUEUE_TYPE:
                 metric1 = ticket.queue.title
-                metric2 = '%s' % (ticket.type if ticket.type else 'Non défini')
+                metric2 = ticket.type.name if ticket.type else 'Non défini'
             elif report == QUEUE_BILLING:
                 metric1 = ticket.queue.title
-                metric2 = '%s' % (ticket.get_billing_display() if ticket.billing else 'Non définie')
+                metric2 = ticket.get_billing_display() if ticket.billing else 'Non définie'
             elif report == DAYS_UNTIL_TICKET_CLOSED_BY_MONTH:
                 metric1 = ticket.queue.title
-                metric2 = '%s-%s' % (ticket.created.year, ticket.created.month)
+                metric2 = f'{ticket.created.year}-{ticket.created.month}'
                 metric3 = ticket.closed - ticket.created
                 metric3 = metric3.days
             else:
-                raise ValueError('%s report is not handled.' % report)
+                raise ValueError(f'{report} report is not handled.')
 
             summarytable[metric1, metric2] += 1
             if metric3:
@@ -2116,7 +2112,7 @@ def save_query(request):
 
     query = SavedSearch.objects.create(title=title, shared=shared, query=query_encoded, user=request.user)
 
-    return redirect('%s?saved_query=%s' % (reverse('helpdesk:list'), query.id))
+    return redirect(f'reverse("helpdesk:list")?saved_query={query.id}')
 
 
 @staff_member_required
@@ -2160,8 +2156,8 @@ def email_ignore_add(request):
             form.save()
             messages.success(
                 request,
-                "L'adresse email %s a bien été ajoutée à la liste des adresses à ignorer."
-                % form.cleaned_data.get('email_address')
+                f"L'adresse email {form.cleaned_data.get('email_address')} a bien "
+                f"été ajoutée à la liste des adresses à ignorer."
             )
             return redirect('helpdesk:email_ignore')
     else:
@@ -2385,8 +2381,8 @@ def date_rel_to_today(today, offset):
 
 
 def sort_string(begin, end):
-    return 'sort=created&date_from=%s&date_to=%s&status=%s&status=%s&status=%s' % (
-        begin, end, Ticket.OPEN_STATUS, Ticket.REOPENED_STATUS, Ticket.RESOLVED_STATUS)
+    return f'sort=created&date_from={begin}&date_to={end}' \
+           f'&status={Ticket.OPEN_STATUS}&status={Ticket.REOPENED_STATUS}&status={Ticket.RESOLVED_STATUS}'
 
 
 @staff_member_required
@@ -2546,7 +2542,7 @@ def generic_incident_create(request):
     form = GenericIncidentForm(request.POST or None, files=request.FILES or None)
     if form.is_valid():
         generic_incident = form.save()
-        messages.success(request, "L'incident générique %s a bien été créé." % generic_incident)
+        messages.success(request, f"L'incident générique {generic_incident} a bien été créé.")
         return redirect(generic_incident)
     return render(request, 'helpdesk/generic_incident_form.html', {'form': form})
 
@@ -2557,7 +2553,7 @@ def generic_incident_update(request, generic_incident_id):
     form = GenericIncidentForm(request.POST or None, files=request.FILES or None, instance=generic_incident)
     if form.is_valid():
         generic_incident = form.save()
-        messages.success(request, "L'incident générique %s a bien été modifié." % generic_incident)
+        messages.success(request, f"L'incident générique {generic_incident} a bien été modifié.")
         return redirect(generic_incident)
     return render(request, 'helpdesk/generic_incident_form.html', {'form': form, 'generic_incident': generic_incident})
 
@@ -2567,6 +2563,6 @@ def generic_incident_delete(request, generic_incident_id):
     generic_incident = get_object_or_404(GenericIncident, id=generic_incident_id)
     if request.method == 'POST':
         generic_incident.delete()
-        messages.success(request, "L'incident générique %s a bien été supprimé." % generic_incident)
+        messages.success(request, f"L'incident générique {generic_incident} a bien été supprimé.")
         return redirect('helpdesk:generic_incident_list')
     return render(request, 'helpdesk/generic_incident_confirm_delete.html', {'generic_incident': generic_incident})

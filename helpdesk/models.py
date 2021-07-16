@@ -1754,7 +1754,7 @@ class TicketCC(models.Model):
     display = property(_display)
 
     def __str__(self):
-        return '%s for %s' % (self.display, self.ticket.title)
+        return f'{self.display} pour {self.ticket.title}'
 
 
 class CustomFieldManager(models.Manager):
