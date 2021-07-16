@@ -885,40 +885,51 @@ class Ticket(models.Model):
             recipients.append(self.submitter_email)
         return recipients
 
-    def add_email_to_ticketcc_if_not_in(self, email=None, user=None, ticketcc=None):
+    def is_email_already_subscribed(self, email):
+        """
+        Check if email passed in parameter is already attached to the ticket.
+        Either by being assigned to it, being the submitter or being in the ticket CC.
+
+        :param str email: user to check
+        :rtype: bool
+        """
+        if self.assigned_to and self.assigned_to.email == email:
+            return True
+
+        return self.submitter_email == email or self.ticketcc_set.filter(email=email).exists()
+
+    def is_user_already_subscribed(self, user):
+        """
+        Check if user passed in parameter already is attached to the ticket.
+        Either by being assigned to it, being the submitter or being in the ticket CC.
+
+        :param User user: user to check
+        :rtype: bool
+        """
+        if self.assigned_to == user or self.customer_contact == user or self.ticketcc_set.filter(user=user).exists():
+            return True
+
+        return self.is_email_already_subscribed(user.email) if user.email else False
+
+    def add_to_ticketcc_if_not_in(self, email=None, user=None, ticketcc=None):
         """
         Check that given email/user email/ticketcc email is not already present on the ticket
-        (submitter email, customer contact, assigned to, in ticket CCs) and add it to a new ticket CC,
-        or move the given one
+        then and add it to a new ticket CC, or move to this ticket
 
         :param str email:
         :param User user:
         :param TicketCC ticketcc:
         """
-        if ticketcc:
-            email = ticketcc.email_address
-        elif user:
-            if user.email:
-                email = user.email
-            else:
-                return
-        elif not email:
-            return
+        assert email or user or ticketcc
 
-        # Check that email is not already part of the ticket
-        if (
-                email != self.submitter_email and
-                (self.customer_contact and email != self.customer_contact.email) and
-                (self.assigned_to and email != self.assigned_to.email) and
-                email not in [x.email_address for x in self.ticketcc_set.all()]
-        ):
-            if ticketcc:
-                ticketcc.ticket = self
-                ticketcc.save(update_fields=['ticket'])
-            elif user:
-                self.ticketcc_set.create(user=user)
-            else:
-                self.ticketcc_set.create(email=email)
+        if user and not self.is_user_already_subscribed(user):
+            self.ticketcc_set.create(user=user, can_view=True, can_update=True)
+        elif not self.is_email_already_subscribed(email):
+            self.ticketcc_set.create(email=email, can_view=True)
+        elif ticketcc and not self.is_email_already_subscribed(ticketcc.email_address):
+            # Move ticketcc to the new ticket
+            ticketcc.ticket = self
+            ticketcc.save(update_fields=['ticket'])
 
     def is_closed_and_too_old(self):
         """
@@ -1729,7 +1740,7 @@ class TicketCC(models.Model):
     )
 
     def _email_address(self):
-        if self.user and self.user.email is not None:
+        if self.user and self.user.email:
             return self.user.email
         else:
             return self.email

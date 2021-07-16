@@ -282,7 +282,7 @@ def view_ticket(request, ticket_id):
     ticket = get_object_or_404(
         Ticket.objects.prefetch_related(
             'followup_set__user', 'followup_set__ticketchange_set',
-            'followup_set__attachment_set', 'ticketdependency__depends_on'
+            'followup_set__attachment_set', 'ticketdependency__depends_on', 'ticketcc_set__user'
         ).select_related(
             'customer__group', 'site', 'customer_product', 'customer_contact', 'category', 'type', 'merged_to'
         ),
@@ -374,11 +374,21 @@ def view_ticket(request, ticket_id):
         return update_ticket(request, ticket_id, append_signature=False)
 
     if 'subscribe' in request.GET:
-        # Allow the user to subscribe him/herself to the ticket whilst viewing it.
-        ticket_cc, show_subscribe = \
-            return_ticketccstring_and_show_subscribe(request.user, ticket)
-        if show_subscribe:
-            subscribe_staff_member_to_ticket(ticket, request.user)
+        # Allow the user to subscribe him/herself to the ticket whilst viewing it (only if he has an email)
+        if not request.user.email:
+            messages.warning(
+                request,
+                'Veuillez renseigner une adresse mail sur votre profil avant de souscrire à ce ticket.'
+            )
+        elif ticket.is_user_already_subscribed(request.user):
+            messages.warning(request, 'Vous avez déjà souscris à ce ticket.')
+        else:
+            ticket.ticketcc_set.create(
+                user=request.user,
+                can_view=True,
+                can_update=True,
+            )
+            messages.success(request, 'Vous avez bien été ajouté en copie au ticket.')
             return redirect(ticket)
 
     if helpdesk_settings.HELPDESK_STAFF_ONLY_TICKET_OWNERS:
@@ -386,11 +396,8 @@ def view_ticket(request, ticket_id):
     else:
         users = User.objects.filter(is_active=True).order_by(User.USERNAME_FIELD)
 
-    followup_form = CreateFollowUpForm(request.POST or None)
-    if ticket.status == Ticket.CLOSED_STATUS:
-        followup_form.fields['toggle_ticket_status'].label = 'Rouvrir le ticket'
-    else:
-        followup_form.fields['toggle_ticket_status'].label = 'Fermer le ticket'
+    # Initialize CreateFollowUpForm here since it is used for both ipexia and non ipexia users
+    followup_form = CreateFollowUpForm(request.POST if 'comment' in request.POST else None)
 
     if request.user.employee.is_ipexia_member:
         form = TicketForm(
@@ -426,6 +433,13 @@ def view_ticket(request, ticket_id):
         # Non ipexia users don't need these
         form = None
         information_form = None
+
+        # Adapt label of the toggle_ticket_status field whether ticket is closed or not
+        if ticket.status == Ticket.CLOSED_STATUS:
+            followup_form.fields['toggle_ticket_status'].label = 'Rouvrir le ticket'
+        else:
+            followup_form.fields['toggle_ticket_status'].label = 'Fermer le ticket'
+
         # Check if follow up is valid, only if ticket is not too old
         if followup_form.is_valid() and not ticket.is_closed_and_too_old():
             follow_up = followup_form.save(commit=False)
@@ -477,34 +491,29 @@ def view_ticket(request, ticket_id):
                         user_list=[ticket.assigned_to]
                     )
 
+            # Add follow up author to ticket CC if he's not already part of the ticket
+            if request.user.email:
+                ticket.add_to_ticketcc_if_not_in(user=request.user)
+
             # Send mail to ticket CC and queue CC
-            for cc in ticket.ticketcc_set.all():
-                send_templated_mail(
-                    template + 'cc',
-                    context,
-                    recipients=cc.email_address,
-                    sender=ticket.queue.from_address,
-                    fail_silently=True,
-                    files=files,
-                )
+            cc_recipients = [cc.email_address for cc in ticket.ticketcc_set.all()]
             if ticket.queue.updated_ticket_cc:
-                send_templated_mail(
-                    template + 'cc',
-                    context,
-                    recipients=ticket.queue.updated_ticket_cc,
-                    sender=ticket.queue.from_address,
-                    fail_silently=True,
-                    files=files,
-                )
+                cc_recipients.append(ticket.queue.updated_ticket_cc)
+            send_templated_mail(
+                template + 'cc',
+                context,
+                recipients=cc_recipients,
+                sender=ticket.queue.from_address,
+                fail_silently=True,
+                files=files,
+            )
+
             # Redirect to feedback survey if customer has closed the ticket
             if new_status == Ticket.CLOSED_STATUS:
                 return redirect('helpdesk:feedback_survey', ticket.id)
             return redirect(ticket)
 
-    ticketcc_string, show_subscribe = \
-        return_ticketccstring_and_show_subscribe(request.user, ticket)
-
-    ticketcc_form = MultipleEmailForm(request.POST or None)
+    ticketcc_form = MultipleEmailForm(request.POST if 'email_input' in request.POST else None)
 
     if ticketcc_form.is_valid():
         email_input = ticketcc_form.cleaned_data['email_input']
@@ -520,7 +529,8 @@ def view_ticket(request, ticket_id):
                 ticketcc_form.add_error('email_input', ValidationError(f"L'adresse {email} n'est pas valide."))
                 valid = False
                 continue
-            if ticket.ticketcc_set.filter(email=email).exists():
+            # Check in ticket's CC if email already exists
+            if ticket.ticketcc_set.filter(Q(email=email) | Q(user__email=email)).exists():
                 ticketcc_form.add_error(
                     'email_input',
                     ValidationError(f"L'adresse {email} est déjà présente dans les personnes en copie.")
@@ -531,7 +541,7 @@ def view_ticket(request, ticket_id):
 
         if valid:
             for email in valid_emails:
-                TicketCC.objects.create(email=email, ticket=ticket, can_view=True)
+                ticket.ticketcc_set.create(email=email, can_view=True)
             messages.success(request, f"{len(valid_emails)} emails ont été ajoutés en copie")
             return redirect(ticket)
 
@@ -545,8 +555,7 @@ def view_ticket(request, ticket_id):
         'priorities': Ticket.PRIORITY_CHOICES,
         'preset_replies': PreSetReply.objects.filter(
             Q(queues=ticket.queue) | Q(queues__isnull=True)),
-        'ticketcc_string': ticketcc_string,
-        'SHOW_SUBSCRIBE': show_subscribe
+        'user_already_subscribed': ticket.is_user_already_subscribed(request.user)
     })
 
 
@@ -608,55 +617,6 @@ def ticket_spent_times(request, ticket_id, spent_time_id=None):
         'edit_spent_time': edit_spent_time,
         'form': form
     })
-
-
-def return_ticketccstring_and_show_subscribe(user, ticket):
-    """used in view_ticket() and followup_edit()"""
-    # create the ticketcc_string and check whether current user is already
-    # subscribed
-    username = user.get_username().upper()
-    useremail = user.email.upper()
-    user_full_name = str(user).upper()
-    strings_to_check = list()
-    strings_to_check.append(username)
-    strings_to_check.append(useremail)
-    strings_to_check.append(user_full_name)
-
-    ticketcc_string = ''
-    all_ticketcc = ticket.ticketcc_set.all()
-    counter_all_ticketcc = len(all_ticketcc) - 1
-    show_subscribe = True
-    for i, ticketcc in enumerate(all_ticketcc):
-        ticketcc_this_entry = str(ticketcc.display)
-        ticketcc_string += ticketcc_this_entry
-        if i < counter_all_ticketcc:
-            ticketcc_string += ', '
-        if ticketcc_this_entry.upper() in strings_to_check:
-            show_subscribe = False
-
-    # check whether current user is a submitter or assigned to ticket
-    assignedto_username = str(ticket.assigned_to).upper()
-    strings_to_check = list()
-    if ticket.submitter_email is not None:
-        submitter_email = ticket.submitter_email.upper()
-        strings_to_check.append(submitter_email)
-    strings_to_check.append(assignedto_username)
-    if username in strings_to_check or useremail in strings_to_check or user_full_name in strings_to_check:
-        show_subscribe = False
-
-    return ticketcc_string, show_subscribe
-
-
-def subscribe_staff_member_to_ticket(ticket, user):
-    """used in view_ticket() and update_ticket()"""
-    if not ticket.ticketcc_set.filter(user=user).exists():
-        ticketcc = TicketCC(
-            ticket=ticket,
-            user=user,
-            can_view=True,
-            can_update=True,
-        )
-        ticketcc.save()
 
 
 @staff_member_required
@@ -1005,12 +965,6 @@ def update_ticket(request, ticket_id, append_signature=True, public=False):
 
     ticket.save()
 
-    # auto subscribe user if enabled
-    if helpdesk_settings.HELPDESK_AUTO_SUBSCRIBE_ON_TICKET_RESPONSE and request.user.is_authenticated:
-        ticketcc_string, SHOW_SUBSCRIBE = return_ticketccstring_and_show_subscribe(request.user, ticket)
-        if SHOW_SUBSCRIBE:
-            subscribe_staff_member_to_ticket(ticket, request.user)
-
     return return_to_ticket(request.user, ticket)
 
 
@@ -1268,14 +1222,14 @@ def fusion_tickets(request):
                     )
 
                     # Add submitter_email, assigned_to email and ticketcc to chosen ticket if necessary
-                    chosen_ticket.add_email_to_ticketcc_if_not_in(email=ticket.submitter_email)
+                    chosen_ticket.add_to_ticketcc_if_not_in(email=ticket.submitter_email)
                     if ticket.customer_contact and ticket.customer_contact.email:
-                        chosen_ticket.add_email_to_ticketcc_if_not_in(email=ticket.customer_contact.email)
+                        chosen_ticket.add_to_ticketcc_if_not_in(email=ticket.customer_contact.email)
                     if ticket.assigned_to and ticket.assigned_to.email:
-                        chosen_ticket.add_email_to_ticketcc_if_not_in(email=ticket.assigned_to.email)
+                        chosen_ticket.add_to_ticketcc_if_not_in(email=ticket.assigned_to.email)
                     for ticketcc in ticket.ticketcc_set.all():
-                        chosen_ticket.add_email_to_ticketcc_if_not_in(ticketcc=ticketcc)
-                messages.success(request, 'Les tickets ont bien été fusionnées dans le ticket %s' % chosen_ticket)
+                        chosen_ticket.add_to_ticketcc_if_not_in(ticketcc=ticketcc)
+                messages.success(request, f'Les tickets ont bien été fusionnées dans le ticket {chosen_ticket}')
                 return redirect(chosen_ticket)
 
     return render(request, 'helpdesk/ticket_merge.html', {
@@ -1930,7 +1884,9 @@ def run_report(request, report):
         to_date,
         queue__in=_get_user_queues(request.user)
     )
-    report_queryset = Ticket.objects.select_related('queue', 'assigned_to').filter(**filter_params)
+    report_queryset = Ticket.objects\
+        .select_related('queue', 'assigned_to', 'category', 'type')\
+        .filter(**filter_params)
 
     if report == DAYS_UNTIL_TICKET_CLOSED_BY_MONTH:
         report_queryset = report_queryset.exclude(closed=None)
