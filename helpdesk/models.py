@@ -819,9 +819,9 @@ class Ticket(models.Model):
             # This is a new ticket as no ID yet exists.
             self.created = timezone.now()
 
-            # Add submitter_email in SimpleUserName if it didn't exist and no user has this email
-            if self.submitter_email and not SimpleUserMail.objects.filter(email=self.submitter_email).exists() and not \
-                User.objects.filter(email=self.submitter_email).exists:
+            # Add submitter_email in SimpleUserMail if it didn't exist and no user has this email
+            if self.submitter_email and not SimpleUserMail.objects.filter(email=self.submitter_email).exists() \
+                    and not User.objects.filter(email=self.submitter_email).exists():
                 SimpleUserMail.objects.create(email=self.submitter_email)
 
         if not self.priority:
@@ -846,14 +846,16 @@ class Ticket(models.Model):
             self.closed = None
             self.resolved = None
 
-        # update SimpleUserMail when customer is set
+        # Update SimpleUserMail when customer is set
         if self.customer and self.submitter_email:
             SimpleUserMail.objects.filter(email=self.submitter_email, customer__isnull=True)\
                 .update(customer=self.customer)
 
-        # set ticket customer if a simple user mail is matching
-        if not self.customer and SimpleUserMail.objects.filter(email=self.submitter_email, customer__isnull=False).exists():
-            self.customer = SimpleUserMail.objects.get(email=self.submitter_email, customer__isnull=False).customer
+        # Set ticket customer if a simple user mail is matching
+        if not self.customer \
+                and SimpleUserMail.objects.filter(email=self.submitter_email, customer__isnull=False).exists():
+            self.customer = SimpleUserMail.objects.get(email=self.submitter_email).customer
+            # Note that it will block from removing customer from the ticket if one is matching
 
         super(Ticket, self).save(*args, **kwargs)
 
