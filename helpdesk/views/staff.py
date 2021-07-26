@@ -28,7 +28,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.html import format_html, linebreaks, urlize
 from django.utils.timezone import make_aware
 from django.utils.translation import ugettext as _
-from django.utils import timezone, six
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from guardian.shortcuts import get_objects_for_user
@@ -1902,14 +1902,7 @@ def run_report(request, report):
         import json
         from helpdesk.lib import b64decode
         try:
-            if six.PY3:
-                if DJANGO_VERSION[0] > 1:
-                    # if Django >= 2.0
-                    query_params = json.loads(b64decode(str(saved_query.query).lstrip("b\\'")).decode())
-                else:
-                    query_params = json.loads(b64decode(str(saved_query.query)).decode())
-            else:
-                query_params = json.loads(b64decode(str(saved_query.query)))
+            query_params = json.loads(b64decode(str(saved_query.query).lstrip("b\\'")).decode())
         except json.JSONDecodeError:
             return redirect('helpdesk:report_index')
 

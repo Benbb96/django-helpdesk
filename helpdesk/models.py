@@ -20,20 +20,18 @@ from django.db import models
 from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
-from django.utils import six
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _, ugettext
-from django.utils.encoding import python_2_unicode_compatible
 import re
 
 from phonenumber_field.modelfields import PhoneNumberField
+from six import StringIO
 from tinymce import HTMLField
 
 from base.models import SpentTime, AbstractGenericIncident, Notification
 from base.utils import office_time_between
 
 
-@python_2_unicode_compatible
 class Queue(models.Model):
     """
     A queue is a collection of tickets into what would generally be business
@@ -453,7 +451,6 @@ class TicketQuerySet(models.QuerySet):
         return self.filter(on_hold=True)
 
 
-@python_2_unicode_compatible
 class Ticket(models.Model):
     """
     To allow a ticket to be entered as quickly as possible, only the
@@ -990,7 +987,6 @@ class FollowUpManager(models.Manager):
         return self.filter(public=True)
 
 
-@python_2_unicode_compatible
 class FollowUp(models.Model):
     """
     A FollowUp is a comment and/or change to a ticket. We keep a simple
@@ -1090,7 +1086,6 @@ class FollowUp(models.Model):
         {signature}"""
 
 
-@python_2_unicode_compatible
 class TicketChange(models.Model):
     """
     For each FollowUp, any changes to the parent ticket (eg Title, Priority,
@@ -1196,7 +1191,6 @@ def attachment_path(instance, filename):
     return os.path.join(path, filename)
 
 
-@python_2_unicode_compatible
 class Attachment(models.Model):
     """
     Represents a file attached to a follow-up. This could come from an e-mail
@@ -1239,7 +1233,6 @@ class Attachment(models.Model):
         verbose_name_plural = _('Attachments')
 
 
-@python_2_unicode_compatible
 class PreSetReply(models.Model):
     """
     We can allow the admin to define a number of pre-set replies, used to
@@ -1281,7 +1274,6 @@ class PreSetReply(models.Model):
         return '%s' % self.name
 
 
-@python_2_unicode_compatible
 class EscalationExclusion(models.Model):
     """
     An 'EscalationExclusion' lets us define a date on which escalation should
@@ -1318,7 +1310,6 @@ class EscalationExclusion(models.Model):
         verbose_name_plural = _('Escalation exclusions')
 
 
-@python_2_unicode_compatible
 class EmailTemplate(models.Model):
     """
     Since these are more likely to be changed than other templates, we store
@@ -1378,7 +1369,6 @@ class EmailTemplate(models.Model):
         verbose_name_plural = _('e-mail templates')
 
 
-@python_2_unicode_compatible
 class KBCategory(models.Model):
     """
     Lets help users help themselves: the Knowledge Base is a categorised
@@ -1411,7 +1401,6 @@ class KBCategory(models.Model):
         return reverse('helpdesk:kb_category', kwargs={'slug': self.slug})
 
 
-@python_2_unicode_compatible
 class KBItem(models.Model):
     """
     An item within the knowledgebase. Very straightforward question/answer
@@ -1480,7 +1469,6 @@ class KBItem(models.Model):
         return reverse('helpdesk:kb_item', args=(self.id,))
 
 
-@python_2_unicode_compatible
 class SavedSearch(models.Model):
     """
     Allow a user to save a ticket search, eg their filtering and sorting
@@ -1530,7 +1518,6 @@ class SavedSearch(models.Model):
         return '%s?saved_query=%s' % (reverse('helpdesk:list'), self.id)
 
 
-@python_2_unicode_compatible
 class UserSettings(models.Model):
     """
     A bunch of user-specific settings that we want to be able to define, such
@@ -1560,10 +1547,7 @@ class UserSettings(models.Model):
         except ImportError:
             import cPickle as pickle
         from helpdesk.lib import b64encode
-        if six.PY2:
-            self.settings_pickled = b64encode(pickle.dumps(data))
-        else:
-            self.settings_pickled = b64encode(pickle.dumps(data)).decode()
+        self.settings_pickled = b64encode(pickle.dumps(data)).decode()
 
     def _get_settings(self):
         # return a python dictionary representing the pickled data.
@@ -1573,10 +1557,7 @@ class UserSettings(models.Model):
             import cPickle as pickle
         from helpdesk.lib import b64decode
         try:
-            if six.PY2:
-                return pickle.loads(b64decode(str(self.settings_pickled)))
-            else:
-                return pickle.loads(b64decode(self.settings_pickled.encode('utf-8')))
+            return pickle.loads(b64decode(self.settings_pickled.encode('utf-8')))
         except pickle.UnpicklingError:
             return {}
 
@@ -1607,7 +1588,6 @@ def create_usersettings(sender, instance, created, **kwargs):
 models.signals.post_save.connect(create_usersettings, sender=settings.AUTH_USER_MODEL)
 
 
-@python_2_unicode_compatible
 class IgnoreEmail(models.Model):
     """
     This model lets us easily ignore e-mails from certain senders when
@@ -1694,7 +1674,6 @@ class IgnoreEmail(models.Model):
             return False
 
 
-@python_2_unicode_compatible
 class TicketCC(models.Model):
     """
     Often, there are people who wish to follow a ticket who aren't the
@@ -1765,7 +1744,6 @@ class CustomFieldManager(models.Manager):
         return super(CustomFieldManager, self).get_queryset().order_by('ordering')
 
 
-@python_2_unicode_compatible
 class CustomField(models.Model):
     """
     Definitions for custom fields that are glued onto each ticket.
@@ -1849,7 +1827,6 @@ class CustomField(models.Model):
     )
 
     def _choices_as_array(self):
-        from django.utils.six import StringIO
         valuebuffer = StringIO(self.list_values)
         choices = [[item.strip(), item.strip()] for item in valuebuffer.readlines()]
         valuebuffer.close()
@@ -1879,7 +1856,6 @@ class CustomField(models.Model):
         verbose_name_plural = _('Custom fields')
 
 
-@python_2_unicode_compatible
 class TicketCustomFieldValue(models.Model):
     ticket = models.ForeignKey(
         Ticket,
@@ -1904,7 +1880,6 @@ class TicketCustomFieldValue(models.Model):
         verbose_name_plural = _('Ticket custom field values')
 
 
-@python_2_unicode_compatible
 class TicketDependency(models.Model):
     """
     The ticket identified by `ticket` cannot be resolved until the ticket in `depends_on` has been resolved.
