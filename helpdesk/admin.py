@@ -135,6 +135,8 @@ class GenericIncidentAdmin(admin.ModelAdmin):
 class SimpleUserMailAdmin(admin.ModelAdmin):
     list_display = ('customer', 'email')
     search_fields = ('email',)
+    list_select_related = ('customer',)
+    autocomplete_fields = ('customer',)
 
 
 admin.site.register(PreSetReply)

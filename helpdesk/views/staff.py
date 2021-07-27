@@ -312,6 +312,8 @@ def view_ticket(request, ticket_id):
 
     if 'take' in request.GET or\
             'close' in request.GET and ticket.status in (Ticket.RESOLVED_STATUS, Ticket.REOPENED_STATUS):
+        # Force ticket.save() in order to refresh customer
+        ticket.save()
         # Trick the update_ticket() view into thinking it's being called with a valid POST.
         request.POST = {
             'public': True,
@@ -710,7 +712,6 @@ def update_ticket(request, ticket_id, append_signature=True, public=False):
     if owner != -1:
         if owner != 0 and ((ticket.assigned_to and owner != ticket.assigned_to.id) or not ticket.assigned_to):
             new_user = User.objects.get(id=owner)
-            # TODO fix translate
             followup.title = f'Assigné à {new_user}'
             ticket.assigned_to = new_user
             reassigned = True
@@ -723,11 +724,9 @@ def update_ticket(request, ticket_id, append_signature=True, public=False):
     old_status = ticket.status
     if new_status != ticket.status:
         ticket.status = new_status
-        ticket.save()
         messages.info(request, f'Le ticket est désormais dans le statut {ticket.get_status_display()}')
         followup.new_status = new_status
         if followup.title:
-            # TODO translate
             followup.title += f' et {ticket.get_status_display()}'
         else:
             followup.title = ticket.get_status_display()
