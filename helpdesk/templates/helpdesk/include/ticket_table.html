@@ -1,0 +1,67 @@
+{% load humanize %}
+
+<div class="table-responsive">
+    <table class="table table-hover table-striped" id="ticketsTable">
+        <thead>
+        <tr>
+            <th class="text-center">ID ticket et Statut</th>
+            <th>Titre</th>
+            {% if not hide_customer %}<th>Client</th>{% endif %}
+            {% if not hide_submitter %}<th>Emmeteur</th>{% endif %}
+            <th>Date d'ouverture</th>
+            <th>Dernière modification</th>
+            <th>Affecté à</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for ticket in tickets %}
+            <tr>
+                <td class="text-center" data-filter="{{ ticket.status }}">
+                    <a href='{{ ticket.get_absolute_url }}' title="Voir le ticket">
+                        {{ ticket.ticket }}
+                    </a>
+                    {% include 'helpdesk/include/status_label.html' %}
+                </td>
+                <td>
+                    <a href='{{ ticket.get_absolute_url }}' title="Voir le ticket">
+                        {{ ticket.title }}
+                    </a>
+                </td>
+                {% if not hide_customer %}
+                    <td>
+                        <a href="{{ ticket.customer.get_absolute_url }}" title="Voir la fiche du client">
+                            {{ ticket.customer }}
+                        </a>
+                    </td>
+                {% endif %}
+                {% if not hide_submitter %}
+                    <td>
+                        {% if ticket.customer_contact %}
+                            <a href="{{ ticket.customer_contact.get_absolute_url }}" title="Voir la fiche de l'utilisateur">
+                                {{ ticket.customer_contact }}
+                            </a>
+                        {% elif ticket.submitter_email %}
+                            {{ ticket.submitter_email }}
+                        {% endif %}
+                    </td>
+                {% endif %}
+                <td data-sort="{{ ticket.created.timestamp }}">
+                    <span title='{{ ticket.created|date:"l j F Y à H:i" }}'>
+                        {{ ticket.created|naturaltime }}
+                    </span>
+                </td>
+                <td data-sort="{{ ticket.modified.timestamp }}">
+                    <span title='{{ ticket.modified|date:"l j F Y à H:i" }}'>
+                        {{ ticket.modified|naturaltime }}
+                    </span>
+                </td>
+                <td>{{ ticket.get_assigned_to }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td class="text-center" colspan="10">Aucun résultat</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

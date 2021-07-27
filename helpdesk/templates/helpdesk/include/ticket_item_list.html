@@ -1,0 +1,8 @@
+<li class="list-group-item">
+    {% include 'helpdesk/include/status_label.html' %}
+    <a href="{{ ticket.get_absolute_url }}" target="_blank">
+        {{ ticket }} <i class="fas fa-external-link"></i>
+    </a>
+    <span class="divider"></span>
+    <small>ouvert le {{ ticket.created }}</small>
+</li>

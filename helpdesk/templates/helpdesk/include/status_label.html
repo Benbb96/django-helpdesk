@@ -1,0 +1,3 @@
+{% load status_color %}
+
+<small class="label label-{{ ticket.status|status_color }}">{{ ticket.get_status }}</small>

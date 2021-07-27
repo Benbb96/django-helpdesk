@@ -1,0 +1,26 @@
+{% extends "helpdesk/base.html" %}
+
+{% load static base_tags avatar_tags %}
+
+{% block helpdesk_title %}Temps passés {{ ticket.queue.slug }}-{{ ticket.id }}{% endblock %}
+
+{% block h1_title %}
+    <a href="{{ ticket.get_absolute_url }}">
+        <i class="fas fa-chevron-circle-left"></i>
+        {{ ticket.ticket_for_url }}
+    </a>
+{% endblock %}
+
+{% block helpdesk_body %}
+    <h3>
+        Enregistrements de temps sur le ticket <b>{{ ticket.title }}</b>
+        <small>{{ spent_times.finished.total_duration|duration }}</small>
+    </h3>
+    {% url 'helpdesk:ticket_spent_times' ticket.id as cancel_link %}
+    {% include 'base/components/spent_time/edit_spent_times.html' with content_type_id=ticket|content_type_id object_id=ticket.id %}
+{% endblock %}
+
+{% block custom_javascripts %}
+    <script src="{% static 'base/build/js/spent_times.js' %}"></script>
+    {{ form.media.js }}
+{% endblock %}

@@ -1,0 +1,5 @@
+{% if ticket.customer_contact %}
+    <a href="{{ ticket.customer_contact.get_absolute_url }}">{{ ticket.customer_contact }}</a>
+{% elif ticket.submitter_email %}
+    {{ ticket.submitter_email }}
+{% endif %}

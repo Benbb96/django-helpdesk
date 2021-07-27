@@ -1,0 +1,146 @@
+{% load i18n %}
+
+{% if ongoing_generic_incidents %}
+    <div class="well well-sm">
+        <h4>
+            {% if ongoing_generic_incidents|length == 1 %}
+                Un incident générique est en cours !
+            {% else %}
+                Des incidents génériques sont en cours !
+            {% endif %}
+        </h4>
+        <ul>
+            {% for generic_incident in ongoing_generic_incidents %}
+                <li>
+                    <a href="{{ generic_incident.get_absolute_url }}">{{ generic_incident }}</a> |
+                    débuté <span title="{{ generic_incident.start_date }}">il y {{ generic_incident.start_date|timesince }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+        <p class="text-center text-italic">
+            Merci de vous référer au suivi de l'incident générique en cours et de n'ouvrir un ticket que
+            si cela concerne un autre problème.
+        </p>
+    </div>
+{% endif %}
+
+{% with customer_open_tickets=customer.tickets.not_closed %}
+{% with site_open_tickets=site.tickets.not_closed %}
+{% with customer_product_open_tickets=customer_product.tickets.not_closed %}
+    {% if customer_product_open_tickets or site_open_tickets or customer_open_tickets %}
+        <div>
+            Des tickets ont été ouverts précédemment sur ce :
+            <div class="btn-group">
+                {% if customer_product_open_tickets %}
+                    <a class="btn btn-primary switchDefaultPrimary" href="#customerProductTickets" data-toggle="tab">
+                        Produit
+                    </a>
+                {% endif %}
+                {% if site_open_tickets %}
+                    <a class="btn btn-{% if not customer_product_open_tickets %}primary{% else %}default{% endif %} switchDefaultPrimary"
+                       href="#siteTickets" data-toggle="tab">
+                        Site
+                    </a>
+                {% endif %}
+                {% if customer_open_tickets %}
+                    <a class="btn btn-{% if not customer_product_open_tickets and not site_open_tickets %}primary{% else %}default{% endif %} switchDefaultPrimary"
+                       href="#customerTickets" data-toggle="tab">
+                        Client
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="tab-content">
+            {% if customer_product_open_tickets %}
+                <div class="tab-pane active" id="customerProductTickets">
+                    <ul class="list-group">
+                        {% for ticket in customer_product_open_tickets %}
+                            {% include 'helpdesk/include/ticket_item_list.html' %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            {% if site_open_tickets %}
+                <div class="tab-pane{% if not customer_product_open_tickets %} active{% endif %}" id="siteTickets">
+                    <ul class="list-group">
+                        {% for ticket in site_open_tickets %}
+                            {% include 'helpdesk/include/ticket_item_list.html' %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            {% if customer_open_tickets %}
+                <div class="tab-pane{% if not customer_product_open_tickets and not site_open_tickets %} active{% endif %}" id="customerTickets">
+                    <ul class="list-group">
+                        {% for ticket in customer_open_tickets %}
+                            {% include 'helpdesk/include/ticket_item_list.html' %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+        <p class="text-danger">
+            Merci de vérifier qu'un ticket similaire à votre demande n'existe pas déjà avant d'en créer un nouveau.
+        </p>
+        <hr>
+    {% endif %}
+{% endwith %}
+{% endwith %}
+{% endwith %}
+
+<p>
+    {% trans "Unless otherwise stated, all fields are required." %}
+    {% trans "Please provide as descriptive a title and description as possible." %}
+</p>
+
+{% if form.errors %}
+    {% include 'base/components/alert_error.html' %}
+    {{ form.non_field_errors }}
+{% endif %}
+
+<form method='post' action="{% url 'helpdesk:submit' %}" enctype='multipart/form-data'>
+    {% csrf_token %}
+    {% for field in form %}
+        {% if field.is_hidden %}
+            {# Special hidden inputs for contextual information #}
+            {% if field.name == 'link_open' %}
+                <input type="hidden" id="{{ field.id_for_label  }}" name="{{ field.html_name }}"
+                       value="{{ request.build_absolute_uri }}">
+            {% elif field.name == 'customer' %}
+                <input type="hidden" id="{{ field.id_for_label  }}" name="{{ field.html_name }}"
+                       value="{% if customer %}{{ customer.id }}{% else %}{{ field.value|default:"" }}{% endif %}">
+            {% elif field.name == 'site' %}
+                <input type="hidden" id="{{ field.id_for_label  }}" name="{{ field.html_name }}"
+                       value="{% if site %}{{ site.id }}{% else %}{{ field.value|default:"" }}{% endif %}">
+            {% elif field.name == 'customer_product' %}
+                <input type="hidden" id="{{ field.id_for_label  }}" name="{{ field.html_name }}"
+                       value="{% if customer_product %}{{ customer_product.id }}{% else %}{{ field.value|default:"" }}{% endif %}">
+            {% else %}
+                {{ field }}
+            {% endif %}
+        {# Show the generic_incident field only when they are one that are ongoing #}
+        {% elif field.name != 'generic_incident' or ongoing_generic_incidents %}
+            <div class="form-group"{% if field.name == 'update_phone_number' %} id="updatePhoneNumber" style="display: none" {% endif %}>
+                <dt>
+                    {{ field.label_tag }}
+                    {% if not field.field.required %}
+                        <span class='form_optional'>{% trans "(Optional)" %}</span>
+                    {% endif %}
+                </dt>
+                <dd>{{ field }}</dd>
+                {% if field.errors %}
+                    <dd class='error'>{{ field.errors }}</dd>
+                {% endif %}
+                {% if field.help_text %}
+                    <dd class='form_help_text help-block'>{% trans field.help_text %}</dd>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    <div class='buttons form-group'>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">
+            <i class="fas fa-send"></i> {% trans "Submit Ticket" %}
+        </button>
+    </div>
+</form>

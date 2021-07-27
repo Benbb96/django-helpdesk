@@ -1,0 +1,30 @@
+{% load i18n %}
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <h2 class="text-center">{% trans "View a Ticket" %}</h2>
+        <form method='get' action="{% url 'helpdesk:public_view' %}">
+            {% if error_message %}
+                <p class="text-danger">
+                    <strong>{% trans "Error:" %}</strong>
+                    {{ error_message }}
+                </p>
+            {% endif %}
+            <div class="form-group">
+                <label for='id_ticket'>{% trans "Ticket" %} :</label>
+                <input type='text' name='ticket' id="id_ticket" class="form-control" value="{{ ticket }}"
+                       placeholder="Numéro du ticket : 2044">
+            </div>
+            <div class="form-group">
+                <label for='id_email'>{% trans "Your E-mail Address" %} :</label>
+                <input type='email' name='email' id="id_email" value="{{ email }}" class="form-control">
+            </div>
+            <div class='buttons form-group text-center'>
+                <input type='submit' class="btn btn-primary" value='{% trans "View Ticket" %}'>
+                {% if error_message %}
+                    <a href="{% url 'helpdesk:home' %}" class="btn btn-warning">Annuler</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>

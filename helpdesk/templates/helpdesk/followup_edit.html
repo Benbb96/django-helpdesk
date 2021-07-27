@@ -1,37 +1,34 @@
-{% extends "helpdesk/base.html" %}{% load i18n %}
+{% extends "helpdesk/base.html" %}
+
+{% load i18n bootstrap %}
+
 {% block helpdesk_title %}{% trans "Edit followup" %}{% endblock %}
 
-{% block helpdesk_head %}
-<script type="text/javascript">
-    $(document).ready(function() {
-        $("[data-toggle=tooltip]").tooltip();
-    });
-</script>
-{% endblock helpdesk_head %}
-
 {% block helpdesk_body %}
-
-{% include "helpdesk/ticket_desc_table.html" %}
-
-<h3>{% trans "Edit FollowUp" %}</h3>
-    <form action="." method="POST" name="edit_followup_form">
-        {{ form.non_field_errors }}
-        <fieldset>
-        <dl>
-            <dt><label for='id_ticket'>{% trans "Reassign ticket:" %}</label></dt>
-            <dd>{{ form.ticket }}</dd>
-            <dt><label for="id_title">{% trans "Title:" %}</label></dt>
-            <dd>{{ form.title }}</dd>
-            <dt><label for="id_comment">{% trans "Comment:" %}</label></dt>
-            <dd>{{ form.comment }}</dd>
-            <dt><label for="id_public">Public:</label></dt>
-            <dd>{{ form.public }}</dd>
-                <p>Public tickets are viewable by the submitter and all staff, but non-public tickets can only be seen by staff.</p>
-            <dt><label for="id_new_status">New Status:</label></dt>
-            <dd>{{ form.new_status }}</dd>
-                <p>If the status was changed, what was it changed to?</p>
-        </dl>
-        </fieldset>
-        <p><input class="btn btn-primary" type="submit" value="Submit"></p>{% csrf_token %}
-    </form>
+    <div class="row" id="followUpForm">
+        <div class="col-sm-8 col-xs-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>{% trans "Edit FollowUp" %}</h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                        <li><a class="collapse-link"><i class="fas fa-chevron-up"></i></a></li>
+                    </ul>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <form method="POST" name="edit_followup_form">
+                        {% csrf_token %}
+                        {{ form.non_field_errors }}
+                        {{ form|bootstrap }}
+                        <div class="text-center">
+                            <input class="btn btn-primary" type="submit" value="{% trans "Save" %}">
+                            <a href="{{ ticket.get_absolute_url }}" class="btn btn-warning">
+                                {% trans "Cancel" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock helpdesk_body %}

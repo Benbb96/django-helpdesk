@@ -1,0 +1,6 @@
+{% load base_tags %}
+{% if object.first_answer_time_average != None %}
+    {{ object.first_answer_time_average|duration }}
+    <br>
+    <small><b>{{ object.percentage_under_one_hour }}%</b> < 1h</small>
+{% endif %}

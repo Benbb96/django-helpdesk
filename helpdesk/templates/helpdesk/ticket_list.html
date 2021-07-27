@@ -1,267 +1,650 @@
 {% extends "helpdesk/base.html" %}
-{% load i18n humanize %}
-{% load static from staticfiles %}
+
+{% load i18n humanize static status_color %}
+
 {% block helpdesk_title %}{% trans "Tickets" %}{% endblock %}
-{% block helpdesk_head %}
 
-<script src='{% static "helpdesk/filter.js" %}'></script>
-<script>
-$(document).ready(function() {
-
-    $('#ticketTable').DataTable({
-            "oLanguage": {
-                "sEmptyTable": "{% trans 'No Tickets Match Your Selection' %}"
-            },
-            "order": [],
-            responsive: true
-    });
-
-    $("#select_all").click(function() {
-        $(".ticket_multi_select").prop('checked', true);
-        return false;
-    });
-    $("#select_none").click(function() {
-        $(".ticket_multi_select").prop('checked', false);
-        return false;
-    });
-    $("#select_inverse").click(function() {
-        $(".ticket_multi_select").each(function() {
-            $(this).prop('checked', !$(this).prop('checked'));
-        });
-        return false;
-    });
-});
-</script>
-{% endblock %}
 {% block h1_title %}Tickets
-    {% if from_saved_query %} [{{ saved_query.title }}]{% endif %}{% endblock %}
+    {% if from_saved_query %}[{{ saved_query.title }}]{% endif %}
+{% endblock %}
+
 {% block helpdesk_body %}
+    {% load in_list %}
 
-{% load in_list %}
-
-            <div class="row">
-                <div class="col-lg-12">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            {% trans "Query Selection" %}
-                        </div>
-                        <!-- .panel-heading -->
-                        <div class="panel-body">
-                            <div class="panel-group" id="accordion">
-                                <div class="panel panel-primary">
-                                    <div class="panel-heading">
-                                        <h4 class="panel-title">
-                                            <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">{% trans "Change Query" %}</a>
-                                        </h4>
-                                    </div>
-                                    <div id="collapseOne" class="panel-collapse collapse in">
-                                        <div class="panel-body">
-                                            <form>
-                                                <select name='select' id='filterBuilderSelect'>
-                                                <option value='Sort'>{% trans "Sorting" %}</option>
-                                                <option value='Owner'>{% trans "Owner" %}</option>
-                                                <option value='Queue'>{% trans "Queue" %}</option>
-                                                <option value='Status'>{% trans "Status" %}</option>
-                                                <option value='Keywords'>{% trans "Keywords" %}</option>
-                                                <option value='Dates'>{% trans "Date Range" %}</option>
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>{% trans "Query Selection" %}</h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                        {% if user_saved_queries_ %}
+                            <li class="dropdown">
+                                <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                                    <i class="fas fa-filter fa-fw"></i>
+                                    {% trans "Saved Queries" %}
+                                </a>
+                                <ul class="dropdown-menu">
+                                    {% for q in user_saved_queries_ %}
+                                        <li>
+                                            <a href="{% url 'helpdesk:list' %}?saved_query={{ q.id }}">
+                                                {{ q.title }}
+                                                {% if q.shared %}
+                                                    ({% trans "Shared" %}{% if request.user != q.user %} {% trans "by" %} {{ q.user }}{% endif %})
+                                                {% endif %}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                            <li class="divider"></li>
+                        {% endif %}
+                        <li><a class="collapse-link"><i class="fas fa-chevron-up"></i></a></li>
+                    </ul>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <div class="accordion" id="accordion">
+                        <div class="panel">
+                            <div class="panel-heading">
+                                <h4 class="panel-title">
+                                    <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
+                                        {% trans "Change Query" %}
+                                    </a>
+                                </h4>
+                            </div>
+                            <div id="collapseOne" class="panel-collapse collapse in">
+                                <div class="panel-body">
+                                    <form class="row">
+                                        {% csrf_token %}
+                                        <div class="col-md-4 col-sm-6 col-xs-12">
+                                            <div class="input-group">
+                                                <select name='select' id='filterBuilderSelect' class="form-control">
+                                                    <option value='Sort'>{% trans "Sorting" %}</option>
+                                                    <option value='Owner'>{% trans "Owner" %}</option>
+                                                    <option value='Customer'>Client</option>
+                                                    <option value='Queue'>{% trans "Queue" %}</option>
+                                                    <option value='Status'>{% trans "Status" %}</option>
+                                                    <option value='Keywords'>{% trans "Keywords" %}</option>
+                                                    <option value='Dates'>{% trans "Date Range" %}</option>
+                                                    <option value='Category'>Catégories</option>
+                                                    <option value='Type'>Type de ticket</option>
+                                                    <option value='Billing'>Facturation</option>
+                                                    <option value='Resolution'>Résolution</option>
                                                 </select>
-                                                <button class='btn btn-success btn-xs' id='filterBuilderButton'><i class="fa fa-plus-circle"></i></button>
-                                            {% csrf_token %}</form>
+                                                <div class="input-group-btn">
+                                                    <button class='btn btn-success' id='filterBuilderButton'>
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
 
-                                            <form method='get' action='./'>
-                                            <div class='thumbnail filterBox{% if query_params.sorting %} filterBoxShow{% endif %}' id='filterBoxSort'>
+                                    <form>
+                                        {# Sorting #}
+                                        <div class='filterBox'{% if not query_params.sorting %} style="display: none"{% endif %}
+                                             id='filterBoxSort'>
                                             <label for='id_sort'>{% trans "Sorting" %}</label>
-                                            <select id='id_sort' name='sort'>
-                                                <option value='created'{% ifequal query_params.sorting "created"%} selected='selected'{% endifequal %}>
+                                            <select id='id_sort' name='sort' class="form-control">
+                                                <option value='created'{% if query_params.sorting == "created" %} selected{% endif %}>
                                                     {% trans "Created" %}
                                                 </option>
-                                                <option value='title'{% ifequal query_params.sorting "title"%} selected='selected'{% endifequal %}>
+                                                <option value='modified'{% if query_params.sorting == "modified" %} selected{% endif %}>
+                                                    {% trans "Modified" %}
+                                                </option>
+                                                <option value='resolved'{% if query_params.sorting == "resolved" %} selected{% endif %}>
+                                                    Résolu
+                                                </option>
+                                                <option value='closed'{% if query_params.sorting == "closed" %} selected{% endif %}>
+                                                    Fermé
+                                                </option>
+                                                <option value='title'{% if query_params.sorting == "title" %} selected{% endif %}>
                                                     {% trans "Title" %}
                                                 </option>
-                                                <option value='queue'{% ifequal query_params.sorting "queue"%} selected='selected'{% endifequal %}>
+                                                <option value='queue'{% if query_params.sorting == "queue" %} selected{% endif %}>
                                                     {% trans "Queue" %}
                                                 </option>
-                                                <option value='status'{% ifequal query_params.sorting "status"%} selected='selected'{% endifequal %}>
+                                                <option value='status'{% if query_params.sorting == "status" %} selected{% endif %}>
                                                     {% trans "Status" %}
                                                 </option>
-                                                <option value='priority'{% ifequal query_params.sorting "priority"%} selected='selected'{% endifequal %}>
+                                                <option value='priority'{% if query_params.sorting == "priority" %} selected{% endif %}>
                                                     {% trans "Priority" %}
                                                 </option>
-                                                <option value='assigned_to'{% ifequal query_params.sorting "assigned_to"%} selected='selected'{% endifequal %}>
+                                                <option value='assigned_to'{% if query_params.sorting == "assigned_to" %} selected{% endif %}>
                                                     {% trans "Owner" %}
                                                 </option>
                                             </select>
-                                            <label for='id_sortreverse'>{% trans "Reverse" %}</label>
-                                            <input type='checkbox' name='sortreverse' id='id_sortreverse'{% if query_params.sortreverse %} checked='checked'{% endif %} />
+                                            <p>
+                                                <label>
+                                                    <input type='checkbox' name='sortreverse'{% if query_params.sortreverse %} checked{% endif %}>
+                                                    {% trans "Reverse" %}
+                                                </label>
+                                            </p>
                                             <p class='filterHelp'>{% trans "Ordering applied to tickets" %}</p>
-                                            <button class='filterBuilderRemove btn btn-danger btn-xs'><i class="fa fa-trash-o"></i></button>
-                                            </div>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
 
-                                            <div class='thumbnail filterBox{% if query_params.filtering.assigned_to__id__in %} filterBoxShow{% endif %}' id='filterBoxOwner'>
+                                        {# Owners #}
+                                        <div class='filterBox'{% if not query_params.filtering.assigned_to__id__in %} style="display: none"{% endif %}
+                                             id='filterBoxOwner'>
                                             <label for='id_owners'>{% trans "Owner(s)" %}</label>
-                                            <select id='id_owners' name='assigned_to' multiple='selected' size='5'>
+                                            <select id='id_owners' name='assigned_to' multiple size='5' class="form-control">
                                                 {% for u in user_choices %}
-                                                <option value='{{ u.id }}'{% if u.id|in_list:query_params.filtering.assigned_to__id__in %} selected='selected'{% endif %}>
-                                                    {{ u.get_username }}{% ifequal u user %} {% trans "(ME)" %}{% endifequal %}
-                                                </option>
+                                                    <option value='{{ u.id }}'
+                                                            {% if u.id|in_list:query_params.filtering.assigned_to__id__in %}selected{% endif %}>
+                                                        {{ u }}
+                                                        {% if u == user %}{% trans "(ME)" %}{% endif %}
+                                                    </option>
                                                 {% endfor %}
+                                                <option value="-1"{% if -1 in query_params.filtering.assigned_to__id__in %} selected{% endif %}>Non assigné</option>
                                             </select>
                                             <p class='filterHelp'>{% trans "Ctrl-Click to select multiple options" %}</p>
-                                            <button class='filterBuilderRemove btn btn-danger btn-xs'><i class="fa fa-trash-o"></i></button></a>
-                                            </div>
-
-                                            <div class='thumbnail filterBox{% if query_params.filtering.queue__id__in %} filterBoxShow{% endif %}' id='filterBoxQueue'>
-                                            <label for='id_queues'>{% trans "Queue(s)" %}</label><select id='id_queues' name='queue' multiple='selected' size='5'>{% for q in queue_choices %}<option value='{{ q.id }}'{% if q.id|in_list:query_params.filtering.queue__id__in %} selected='selected'{% endif %}>{{ q.title }}</option>{% endfor %}</select>
-                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
-                                            <button class='filterBuilderRemove btn btn-danger btn-xs'><i class="fa fa-trash-o"></i></button>
-                                            </div>
-
-                                            <div class='thumbnail filterBox{% if query_params.filtering.status__in %} filterBoxShow{% endif %}' id='filterBoxStatus'>
-                                            <label for='id_statuses'>{% trans "Status(es)" %}</label><select id='id_statuses' name='status' multiple='selected' size='5'>{% for s in status_choices %}<option value='{{ s.0 }}'{% if s.0|in_list:query_params.filtering.status__in %} selected='selected'{% endif %}>{{ s.1 }}</option>{% endfor %}</select>
-                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
-                                            <button class='filterBuilderRemove btn btn-danger btn-xs'><i class="fa fa-trash-o"></i></button>
-                                            </div>
-
-                                            <div class='thumbnail filterBox{% if query_params.filtering.created__gte or query_params.filtering.created__lte %} filterBoxShow{% endif %}' id='filterBoxDates'>
-                                                <label for='id_date_from'>{% trans "Date (From)" %}</label><input type='text' name='date_from' value='{{ query_params.filtering.created__gte }}' id='id_date_from' />
-                                                <label for='id_date_to'>{% trans "Date (To)" %}</label><input type='text' name='date_to' value='{{ query_params.filtering.created__lte }}' id='id_date_to' />
-                                            <p class='filterHelp'>{% trans "Use YYYY-MM-DD date format, eg 2011-05-29" %}</p>
-                                            <button class='filterBuilderRemove btn btn-danger btn-xs'><i class="fa fa-trash-o"></i></button>
-                                            </div>
-
-                                            <div class='thumbnail filterBox{% if query_params.search_string %} filterBoxShow{% endif %}' id='filterBoxKeywords'>
-                                            <label for='id_query'>{% trans "Keywords" %}</label><input type='text' name='q' value='{{ query_params.search_string|default:"" }}' id='id_query' />
-                                            <p class='filterHelp'>{% trans "Keywords are case-insensitive, and will be looked for in the title, body and submitter fields." %}</p>
-                                            <button class='filterBuilderRemove btn btn-danger btn-xs'><i class="fa fa-trash-o"></i></button>
-                                            </div>
-                                            <hr style='clear: both;' />
-                                            <input class="btn btn-primary" type='submit' value='{% trans "Apply Filter" %}' />
-                                            {% if from_saved_query and saved_query.user == user %}
-                                            <p>{% blocktrans with saved_query.title as query_name %}You are currently viewing saved query <strong>"{{ query_name }}"</strong>.{% endblocktrans %} <a href='{% url 'helpdesk:delete_query' saved_query.id %}'>{% trans "Delete Saved Query" %}</a></p>
-                                            {% endif %}
-                                            {% if from_saved_query %}
-                                            <p>{% blocktrans with saved_query.id as query_id %}<a href='../reports/?saved_query={{ query_id }}'>Run a report</a> on this query to see stats and charts for the data listed below.{% endblocktrans %}</p>
-                                            {% endif %}
-                                            {% csrf_token %}</form>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="panel panel-primary">
-                                    <div class="panel-heading">
-                                        <h4 class="panel-title">
-                                            <a data-toggle="collapse" data-parent="#accordion" href="#collapseTwo">{% trans "Save Query" %}</a>
-                                        </h4>
-                                    </div>
-                                    <div id="collapseTwo" class="panel-collapse collapse">
-                                        <div class="panel-body">
-                                            <form method='post' action='{% url 'helpdesk:savequery' %}'>
-                                                <input type='hidden' name='query_encoded' value='{{ urlsafe_query }}' />
-                                                <dl>
-                                                    <dt><label for='id_title'>{% trans "Query Name" %}</label></dt>
-                                                    <dd><input type='text' name='title' id='id_title' /></dd>
-                                                    <dd class='form_help_text'>{% trans "This name appears in the drop-down list of saved queries. If you share your query, other users will see this name, so choose something clear and descriptive!" %}</dd>
 
-                                                    <dt><label for='id_shared'>{% trans "Shared?" %}</label></dt>
-                                                    <dd><input type='checkbox' name='shared' id='id_shared' /> {% trans "Yes, share this query with other users." %}</dd>
-                                                    <dd class='form_help_text'>{% trans "If you share this query, it will be visible by <em>all</em> other logged-in users." %}</dd>
+                                        {# Customers #}
+                                        <div class='filterBox'{% if not query_params.filtering.customer__id__in %} style="display: none"{% endif %}
+                                             id='filterBoxCustomer'>
+                                            <label for='id_types'>Client</label>
+                                            <select id='id_types' name='customers' multiple size='5' class="form-control">
+                                                {% for customer in customer_choices %}
+                                                    <option value='{{ customer.id }}'
+                                                            {% if customer.id|in_list:query_params.filtering.customer__id__in %}
+                                                                selected='selected'
+                                                            {% endif %}>
+                                                        {{ customer }}
+                                                    </option>
+                                                {% endfor %}
+                                                <option value="-1"{% if -1 in query_params.filtering.customer__id__in %} selected{% endif %}>Non affecté</option>
+                                            </select>
+                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
 
-                                                </dl>
-                                                <div class='buttons'>
-                                                    <input class="btn btn-primary" type='submit' value='{% trans "Save Query" %}'>
+                                        {# Queues #}
+                                        <div class='filterBox'{% if not query_params.filtering.queue__id__in %} style="display: none"{% endif %}
+                                             id='filterBoxQueue'>
+                                            <label for='id_queues'>{% trans "Queue(s)" %}</label>
+                                            <select id='id_queues' name='queues' multiple size='5' class="form-control">
+                                                {% for q in queue_choices %}
+                                                    <option value='{{ q.id }}'
+                                                            {% if q.id|in_list:query_params.filtering.queue__id__in %}
+                                                                selected='selected'
+                                                            {% endif %}>
+                                                        {{ q.title }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
+
+                                        {# Categories #}
+                                        <div class='filterBox'{% if not query_params.filtering.category__id__in %} style="display: none"{% endif %}
+                                             id='filterBoxCategory'>
+                                            <label for='id_categories'>Catégories</label>
+                                            <select id='id_categories' name='categories' multiple size='5' class="form-control">
+                                                {% for category in category_choices %}
+                                                    <option value='{{ category.id }}'
+                                                            {% if category.id|in_list:query_params.filtering.category__id__in %}
+                                                                selected='selected'
+                                                            {% endif %}>
+                                                        {{ category }}
+                                                    </option>
+                                                {% endfor %}
+                                                <option value="-1"{% if -1 in query_params.filtering.category__id__in %} selected{% endif %}>Sans catégorie</option>
+                                            </select>
+                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
+
+                                        {# Types #}
+                                        <div class='filterBox'{% if not query_params.filtering.type__id__in %} style="display: none"{% endif %}
+                                             id='filterBoxType'>
+                                            <label for='id_types'>Types de ticket</label>
+                                            <select id='id_types' name='types' multiple size='5' class="form-control">
+                                                {% for type in type_choices %}
+                                                    <option value='{{ type.id }}'
+                                                            {% if type.id|in_list:query_params.filtering.type__id__in %}
+                                                                selected='selected'
+                                                            {% endif %}>
+                                                        {{ type }}
+                                                    </option>
+                                                {% endfor %}
+                                                <option value="-1"{% if -1 in query_params.filtering.type__id__in %} selected{% endif %}>Sans type</option>
+                                            </select>
+                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
+
+                                        {# Billing #}
+                                        <div class='filterBox'{% if not query_params.filtering.billing__in %} style="display: none"{% endif %}
+                                             id='filterBoxBilling'>
+                                            <label for='id_billings'>Facturation</label>
+                                            <select id='id_billings' name='billings' multiple size='5' class="form-control">
+                                                {% for value, billing in billing_choices %}
+                                                    <option value='{{ value }}'
+                                                            {% if value|in_list:query_params.filtering.billing__in %}
+                                                                selected='selected'
+                                                            {% endif %}>
+                                                        {{ billing }}
+                                                    </option>
+                                                {% endfor %}
+                                                <option value="-1"{% if -1 in query_params.filtering.billing__in %} selected{% endif %}>Sans facturation</option>
+                                            </select>
+                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
+
+                                        {# Resolution #}
+                                        <div class='filterBox'{% if not query_params.filtering.resolution__icontains and 'resolution' not in query_params.filtering.keys %} style="display: none"{% endif %}
+                                             id='filterBoxResolution'>
+                                            <label for='id_resolution'>Résolution</label>
+                                            <input id='id_resolution' name='resolution' class="form-control" value="{{ query_params.filtering.resolution__icontains }}">
+                                            <p>
+                                                <label>
+                                                    <input type="checkbox" name="no_resolution"{% if 'resolution' in query_params.filtering.keys %} checked{% endif %}>
+                                                    Sans résolution
+                                                </label>
+                                            </p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
+
+                                        {# Status #}
+                                        <div class='filterBox'{% if not query_params.filtering.status__in %} style="display: none"{% endif %}
+                                             id='filterBoxStatus'>
+                                            <label for='id_statuses'>{% trans "Status(es)" %}</label>
+                                            <select id='id_statuses' name='status' multiple size='5' class="form-control">
+                                            {% for s in status_choices %}
+                                                <option value='{{ s.0 }}'
+                                                        {% if s.0|in_list:query_params.filtering.status__in %}
+                                                            selected='selected'
+                                                        {% endif %}>
+                                                    {{ s.1 }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                            <p class='filterHelp'>{% trans "Ctrl-click to select multiple options" %}</p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
+                                        </div>
+
+                                        {# Date Range #}
+                                        <div class='filterBox'{% if not query_params.filtering.created__date__gte and not query_params.filtering.created__date__lte and not query_params.created_relative.days %} style="display: none"{% endif %}
+                                             id='filterBoxDates'>
+                                            <div class="form-group row">
+                                                <div class="col-xs-6 text-center">
+                                                    <label>
+                                                        <input type="radio" id="showAbsolute" name="toggle" class="flat"{% if not query_params.created_relative.days %} checked{% endif %}>
+                                                        Absolu
+                                                    </label>
                                                 </div>
-                                            {% csrf_token %}</form>
+                                                <div class="col-xs-6 text-center">
+                                                    <label>
+                                                        <input type="radio" id="showRelative" name="toggle" class="flat"{% if query_params.created_relative.days %} checked{% endif %}>
+                                                        Relatif
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div id="absolute"{% if query_params.created_relative.days %} style="display: none"{% endif %}>
+                                                <label for='id_date_from'>{% trans "Date (From)" %}</label>
+                                                <input type='date' name='date_from' value='{{ query_params.filtering.created__date__gte }}'
+                                                       id='id_date_from' class="form-control"/>
+                                                <label for='id_date_to'>{% trans "Date (To)" %}</label>
+                                                <input type='date' name='date_to' value='{{ query_params.filtering.created__date__lte }}'
+                                                       id='id_date_to' class="form-control"/>
+                                                <p class='filterHelp'>{% trans "Use YYYY-MM-DD date format, eg 2011-05-29" %}</p>
+                                            </div>
+                                            <div id="relative"{% if not query_params.created_relative.days %} style="display: none"{% endif %}>
+                                                <label for="id_created_relative_days">Date de création relative (jour)</label>
+                                                <input type="number" name="created_relative_days" value="{{ query_params.created_relative.days }}" min="0" max="1000"
+                                                   id="id_created_relative_days" class="form-control" oninput="$('#displayDays').text(this.value)">
+                                                <label>
+                                                    <input type="radio" name="direction" value="before"
+                                                           oninput="$('#displayDirection').text('plus')"
+                                                            {% if query_params.created_relative.direction == 'before' %} checked{% endif %}>
+                                                    Avant
+                                                </label>
+                                                <label>
+                                                    <input type="radio" name="direction" value="after"
+                                                           oninput="$('#displayDirection').text('moins')"
+                                                            {% if query_params.created_relative.direction == 'after' %} checked{% endif %}>
+                                                    Après
+                                                </label>
+                                                <p class="filterHelp">
+                                                    Affiche les tickets créés il y a
+                                                    <span id="displayDirection">
+                                                        {% if query_params.created_relative.direction == 'before' %}plus{% else %}moins{% endif %}
+                                                    </span> de <span id="displayDays">{{ query_params.created_relative.days }}</span>
+                                                    jours
+                                                </p>
+                                            </div>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="panel panel-primary">
-                                    <div class="panel-heading">
-                                        <h4 class="panel-title">
-                                            <a data-toggle="collapse" data-parent="#accordion" href="#collapseThree">{% trans "Use Saved Query" %}</a>
-                                        </h4>
-                                    </div>
-                                    <div id="collapseThree" class="panel-collapse collapse">
-                                        <div class="panel-body">
-                                            <form method='get' action='{% url 'helpdesk:list' %}'>
-                                                <p><label for='id_query_selector'>{% trans "Query" %}</label> <select name='saved_query' id='id_query_selector'>
-                                                    {% for q in user_saved_queries %}
-                                                    <option value='{{ q.id }}'>{{ q.title }}{% if q.shared %} ({% trans "Shared" %}{% ifnotequal user q.user %} by {{ q.user.get_username }}{% endifnotequal %}){% endif %}</option>
-                                                    {% endfor %}
-                                                </select></p>
-                                                <input class="btn btn-primary" type='submit' value='{% trans "Run Query" %}'>
-                                            {% csrf_token %}</form>
+
+                                        {# Keywords #}
+                                        <div class='filterBox'{% if not query_params.search_string %} style="display: none"{% endif %}
+                                             id='filterBoxKeywords'>
+                                            <label for='id_query'>{% trans "Keywords" %}</label>
+                                            <input type='text' name='q' value='{{ query_params.search_string|default:"" }}' id='id_query' class="form-control"/>
+                                            <p class='filterHelp'>
+                                                {% trans "Keywords are case-insensitive, and will be looked for in the title, body and submitter fields." %}
+                                            </p>
+                                            {% include 'helpdesk/include/filter_builder_remove_button.html' %}
                                         </div>
-                                    </div>
+                                        <hr style='clear: both;'/>
+                                        <input class="btn btn-primary" type='submit' value='{% trans "Apply Filter" %}'>
+                                        {% if from_saved_query and saved_query.user == user %}
+                                            <p>
+                                                Vous visionnez actuallement votre requête "{{ saved_query.title }}".
+                                                <a href='{% url 'helpdesk:delete_query' saved_query.id %}'>
+                                                    {% trans "Delete Saved Query" %}
+                                                </a>
+                                            </p>
+                                        {% endif %}
+                                        {% if from_saved_query %}
+                                            <p>
+                                                {% blocktrans with saved_query.id as query_id %}<a href='../reports/?saved_query={{ query_id }}'>Run a report</a> on this query to see stats and charts for the data listed below.{% endblocktrans %}
+                                            </p>
+                                        {% endif %}
+                                    </form>
                                 </div>
                             </div>
                         </div>
-                        <!-- .panel-body -->
-                    </div>
-                    <!-- /.panel -->
-                </div>
-                <!-- /.col-lg-12 -->
-            </div>
-            <!-- /.row -->
-
-
-            <div class="row">
-                <div class="col-lg-12">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            {% trans "Query Results" %}
+                        <div class="panel">
+                            <div class="panel-heading">
+                                <h4 class="panel-title">
+                                    <a data-toggle="collapse" data-parent="#accordion"
+                                       href="#collapseTwo">{% trans "Save Query" %}</a>
+                                </h4>
+                            </div>
+                            <div id="collapseTwo" class="panel-collapse collapse">
+                                <div class="panel-body">
+                                    <form method='post' action='{% url 'helpdesk:savequery' %}'>
+                                        {% csrf_token %}
+                                        <input type='hidden' name='query_encoded' value='{{ urlsafe_query }}'/>
+                                        <div class="form-group">
+                                            <label for='id_title'>{% trans "Query Name" %}</label>
+                                            <div class="row">
+                                                <div class="col-sm-6 col-xs-12">
+                                                    <input type='text' name='title' id='id_title' class="form-control">
+                                                </div>
+                                            </div>
+                                            <p class='form_help_text'>
+                                                {% trans "This name appears in the drop-down list of saved queries. If you share your query, other users will see this name, so choose something clear and descriptive!" %}
+                                            </p>
+                                        </div>
+                                        <div class="form-group">
+                                            <div>
+                                                <strong>{% trans "Shared?" %}</strong>
+                                            </div>
+                                            <input type='checkbox' name='shared' id='id_shared'/>
+                                            <label for='id_shared'>{% trans "Yes, share this query with other users." %}</label>
+                                            <p class='form_help_text'>
+                                                {% trans "If you share this query, it will be visible by <em>all</em> other logged-in users." %}
+                                            </p>
+                                        </div>
+                                        <input class="btn btn-primary" type='submit' value='{% trans "Save Query" %}'>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
-                        <!-- /.panel-heading -->
-                        <div class="panel-body">
-                            {{ search_message|safe }}
-                            <form method='post' action='{% url 'helpdesk:mass_update' %}' id="ticket_mass_update">
-                                <table width="100%" class="table table-striped table-bordered table-hover" id="ticketTable" data-page-length='{{ default_tickets_per_page }}'>
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>&nbsp;</th>
-                                            <th>{% trans "Pr" %}</th>
-                                            <th>{% trans "Title" %}</th>
-                                            <th>{% trans "Queue" %}</th>
-                                            <th>{% trans "Status" %}</th>
-                                            <th>{% trans "Created" %}</th>
-                                            <th>{% trans "Due Date" %}</th>
-                                            <th>{% trans "Owner" %}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for ticket in tickets %}
-                                        <tr class="{{ ticket.get_priority_css_class }}">
-                                            <th><a href='{{ ticket.get_absolute_url }}'>{{ ticket.ticket }}</a></th>
-                                            <td><input type='checkbox' name='ticket_id' value='{{ ticket.id }}' class='ticket_multi_select' /></td>
-                                            <td>{{ ticket.priority }}</td>
-                                            <th><a href='{{ ticket.get_absolute_url }}'>{{ ticket.title }}</a></th>
-                                            <td>{{ ticket.queue }}</td>
-                                            <td>{{ ticket.get_status }}</td>
-                                            <td data-order='{{ ticket.created|date:"U" }}'><span title='{{ ticket.created|date:"r" }}'>{{ ticket.created|naturaltime }}</span></td>
-                                            <td data-order='{{ ticket.due_date|date:"U" }}'><span title='{{ ticket.due_date|date:"r" }}'>{{ ticket.due_date|naturaltime }}</span></td>
-                                            <td>{{ ticket.get_assigned_to }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            {% csrf_token %}
+                        <div class="panel">
+                            <div class="panel-heading">
+                                <h4 class="panel-title">
+                                    <a data-toggle="collapse" data-parent="#accordion" href="#collapseThree">
+                                        {% trans "Use Saved Query" %}
+                                    </a>
+                                </h4>
+                            </div>
+                            <div id="collapseThree" class="panel-collapse collapse">
+                                <div class="panel-body">
+                                    <form method='get' action='{% url 'helpdesk:list' %}' class="row">
+                                        <div class="form-group col-sm-6 col-xs-12">
+                                            <label for='id_query_selector'>{% trans "Query" %}</label>
+                                            <select name='saved_query' id='id_query_selector' class="form-control">
+                                                {% for q in user_saved_queries %}
+                                                    <option value='{{ q.id }}'>
+                                                        {{ q.title }}{% if q.shared %} ({% trans "Shared" %}{% ifnotequal user q.user %}
+                                                            by {{ q.user.get_username }}
+                                                        {% endifnotequal %}){% endif %}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-xs-12">
+                                            <input class="btn btn-primary" type='submit' value='{% trans "Run Query" %}'>
+                                        </div>
 
-                                <p><label>{% trans "Select:" %} </label>
-                                    <a href='#select_all' id='select_all'><button class="btn btn-primary btn-sm"><i class="fa fa-check-circle"></i>&nbsp;{% trans "All" %}</button></a>
-                                    <a href='#select_none' id='select_none'><button class="btn btn-primary btn-sm"><i class="fa fa-times-circle"></i>&nbsp;{% trans "None" %}</button></a>
-                                    <a href='#select_inverse' id='select_inverse'><button class="btn btn-primary btn-sm"><i class="fa fa-arrows-alt"></i>&nbsp;{% trans "Invert" %}</button></a>
-                                </p>
-
-                                <p><label for='id_mass_action'>{% trans "With Selected Tickets:" %}</label> <select name='action' id='id_mass_action'><option value='take'>{% trans "Take (Assign to me)" %}</option><option value='delete'>{% trans "Delete" %}</option><optgroup label='{% trans "Close" %}'><option value='close'>{% trans "Close (Don't Send E-Mail)" %}</option><option value='close_public'>{% trans "Close (Send E-Mail)" %}</option></optgroup><optgroup label='{% trans "Assign To" %}'><option value='unassign'>{% trans "Nobody (Unassign)" %}</option>{% for u in user_choices %}<option value='assign_{{ u.id }}'>{{ u.get_username }}</option>{% endfor %}</optgroup></select> <button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-arrow-circle-right"></i>&nbsp;{% trans "Go" %}</button></p>
-                            </form>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
-                        <!-- /.panel-body -->
                     </div>
-                    <!-- /.panel -->
                 </div>
-                <!-- /.col-lg-12 -->
             </div>
-            <!-- /.row -->
+        </div>
+    </div>
 
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>{% trans "Query Results" %}</h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                        <li><a class="collapse-link"><i class="fas fa-chevron-up"></i></a></li>
+                    </ul>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    {{ search_message|safe }}
+                    <form method='post' action='{% url 'helpdesk:mass_update' %}' id="ticket_mass_update">
+                        {% csrf_token %}
+                        <table width="100%" class="table table-striped table-bordered table-hover" id="ticketTable"
+                               data-page-length='{{ default_tickets_per_page }}'>
+                            <thead>
+                            <tr>
+                                <th class="text-center">#</th>
+                                <th></th>
+                                <th class="text-center">Prio</th>
+                                <th>{% trans "Title" %}</th>
+                                <th>Client</th>
+                                <th class="text-center">{% trans "Status" %}</th>
+                                <th class="text-center">Informations</th>
+                                <th class="text-center">{% trans "Created" %}</th>
+                                <th class="text-center">{% trans "Modified" %}</th>
+{#                                <th class="text-center">{% trans "Due Date" %}</th>#}
+                                <th>{% trans "Owner" %}</th>
+                                <th style="max-width: 300px">Commentaire</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for ticket in tickets %}
+                                <tr class="{{ ticket.get_priority_css_class }}">
+                                    <td class="text-center">
+                                        <a href='{{ ticket.get_absolute_url }}'>{{ ticket.ticket }}</a>
+                                    </td>
+                                    <td class="text-center">
+                                        <input type='checkbox' name='ticket_id' value='{{ ticket.id }}'
+                                               class='ticket_multi_select'/>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {{ ticket.priority|priority_color }}" title="{{ ticket.get_priority_display }}">
+                                            {{ ticket.priority }}
+                                        </span>
+                                    </td>
+                                    <td><a href='{{ ticket.get_absolute_url }}'>{{ ticket.title }}</a></td>
+                                    <td>
+                                        {% if ticket.customer %}
+                                            <a href="{{ ticket.customer.get_absolute_url }}">{{ ticket.customer }}</a>
+                                        {% else %}
+                                            Non affecté
+                                        {% endif %}
+                                        {% if ticket.customer_contact or ticket.submitter_email %}
+                                            <br>-
+                                            {% if ticket.customer_contact %}
+                                                <a href="{{ ticket.customer_contact.get_absolute_url }}">
+                                                    {{ ticket.customer_contact }}
+                                                </a>
+                                            {% else %}
+                                                {{ ticket.submitter_email }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% include 'helpdesk/include/status_label.html' %}
+                                    </td>
+                                    <td>
+                                        {% if ticket.category %}Catégorie : <strong>{{ ticket.category }}</strong><br>{% endif %}
+                                        {% if ticket.type %}Type : <strong>{{ ticket.type }}</strong><br>{% endif %}
+                                        {% if ticket.billing %}Facturation : <strong>{{ ticket.get_billing_display }}</strong>{% endif %}
+                                    </td>
+                                    <td data-order='{{ ticket.created|date:"U" }}' class="text-center">
+                                        <span title='{{ ticket.created|date:"l j F Y à H:i" }}'>
+                                            {{ ticket.created|naturaltime }}
+                                        </span>
+                                    </td>
+                                    <td data-order='{{ ticket.modified|date:"U" }}' class="text-center">
+                                        <span title='{{ ticket.modified|date:"l j F Y à H:i" }}'>
+                                            {{ ticket.modified|naturaltime }}
+                                        </span>
+                                    </td>
+{#                                    <td data-order='{{ ticket.due_date|date:"U" }}' class="text-center">#}
+{#                                        {% if ticket.due_date %}#}
+{#                                            <span title='{{ ticket.due_date|date:"l j F Y à H:i" }}'>#}
+{#                                                {{ ticket.due_date|naturaltime }}#}
+{#                                            </span>#}
+{#                                        {% endif %}#}
+{#                                    </td>#}
+                                    <td>{{ ticket.get_assigned_to }}</td>
+                                    <td>
+                                        {{ ticket.form.quick_comment }}
+                                        <button class="btn btn-default" type="button" onclick="editQuickComment(this)"
+                                                title="Enregistrer le commentaire rapide sur le ticket"
+                                                data-url="{% url 'helpdesk:edit_quick_comment' ticket.id %}">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
 
+                        <p>
+                            <label>{% trans "Select:" %} </label>
+                            <a href='#select_all' id='select_all'>
+                                <button class="btn btn-primary btn-sm">
+                                    <i class="fas fa-check-circle"></i>
+                                    {% trans "All" %}
+                                </button>
+                            </a>
+                            <a href='#select_none' id='select_none'>
+                                <button class="btn btn-primary btn-sm">
+                                    <i class="fas fa-times-circle"></i>
+                                    {% trans "None" %}
+                                </button>
+                            </a>
+                            <a href='#select_inverse' id='select_inverse'>
+                                <button class="btn btn-primary btn-sm">
+                                    <i class="fas fa-arrows-alt"></i>
+                                    {% trans "Invert" %}
+                                </button>
+                            </a>
+                        </p>
 
+                        <div class="form-group form-inline">
+                            <label for='id_mass_action'>{% trans "With Selected Tickets:" %}</label>
+                            <select name='action' id='id_mass_action' class="form-control">
+                                <option value='take'>{% trans "Take (Assign to me)" %}</option>
+{#                                <option value='delete'>{% trans "Delete" %}</option>#}
+                                <option value='fusion'>Fusionner</option>
+                                <optgroup label='{% trans "Close" %}'>
+                                    <option value='close'>{% trans "Close (Don't Send E-Mail)" %}</option>
+                                    <option value='close_public'>{% trans "Close (Send E-Mail)" %}</option>
+                                </optgroup>
+                                <optgroup label='{% trans "Assign To" %}'>
+                                    <option value='unassign'>{% trans "Nobody (Unassign)" %}</option>
+                                    {% for u in user_choices %}
+                                        <option value='assign_{{ u.id }}'>{{ u }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-arrow-circle-right"></i>
+                                {% trans "Go" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block custom_javascripts %}
+    <script src='{% static "helpdesk/filter.js" %}'></script>
+    <script>
+        $(() => {
+            // Handle relative dates filter
+            const dateFromInput = $('#id_date_from')
+            const dateToInput = $('#id_date_to')
+            const createdBeforeDaysInput = $('#id_created_relative_days')
+            // Store values in these variables when the Date Section (absolute or relative) is toggled
+            let dateFrom = dateFromInput.val();
+            let dateTo = dateToInput.val();
+            let createdBeforeDays = createdBeforeDaysInput.val();
+
+            $('#showAbsolute').on('ifChecked', function () {
+                $('#relative').hide()
+                createdBeforeDays = createdBeforeDaysInput.val();
+                createdBeforeDaysInput.val('')
+                dateFromInput.val(dateFrom)
+                dateToInput.val(dateTo)
+                $('#absolute').show()
+            });
+
+            $('#showRelative').on('ifChecked', function () {
+                $('#absolute').hide()
+                dateFrom = dateFromInput.val();
+                dateFromInput.val('')
+                dateTo = dateToInput.val();
+                dateToInput.val('')
+                createdBeforeDaysInput.val(createdBeforeDays)
+                $('#relative').show()
+            });
+
+            $('#ticketTable').DataTable({
+                "language": datatable_language,
+                "order": [],
+                responsive: true
+            });
+
+            $("#select_all").on('click', function () {
+                $(".ticket_multi_select").prop('checked', true);
+                return false;
+            });
+            $("#select_none").on('click', function () {
+                $(".ticket_multi_select").prop('checked', false);
+                return false;
+            });
+            $("#select_inverse").on('click', function () {
+                $(".ticket_multi_select").each(function () {
+                    $(this).prop('checked', !$(this).prop('checked'));
+                });
+                return false;
+            });
+        });
+
+        // Save quick comment changes
+        function editQuickComment(btn) {
+            const comment = $(btn).prev().val();
+            const url = $(btn).data("url");
+            $.post(url, {quickComment: comment}).then(response => {
+                if (response.success) {
+                    notification('Le commentaire a bien été enregistré');
+                } else {
+                    notification(response.error, 'error');
+                }
+            }).fail(ajaxFail);
+        }
+    </script>
 {% endblock %}

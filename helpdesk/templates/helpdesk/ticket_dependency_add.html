@@ -7,19 +7,20 @@
 
 <p>Adding a dependency will stop you resolving this ticket until the dependent ticket has been resolved or closed.</p>{% endblocktrans %}
 
-<form method='post' action='./'>
-
-<fieldset>
-    <dl>{% for field in form %}
-        <dt><label for='id_{{ field.name }}'>{{ field.label }}</label></dt>
-        <dd>{{ field }}</dd>
-        {% if field.errors %}<dd class='error'>{{ field.errors }}</dd>{% endif %}
-        {% if field.help_text %}<dd class='form_help_text'>{{ field.help_text }}</dd>{% endif %}
-    {% endfor %}</dl>
-</fieldset>
-
-<input class="btn btn-primary" type='submit' value='{% trans "Save Ticket Dependency" %}' />
-
-{% csrf_token %}</form>
+    <form method='post'>
+        {% csrf_token %}
+        <div class="row">
+            <div class="form-group col-sm-6 col-xs-12">
+                {{ form.depends_on.label_tag }}
+                {{ form.depends_on }}
+                {{ form.depends_on.errors }}
+                {% if field.help_text %}
+                    <div class='help-block'>{{ field.help_text }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <input class="btn btn-primary" type='submit' value='{% trans "Save Ticket Dependency" %}'/>
+        <a href="{{ ticket.get_absolute_url }}" class="btn btn-warning">{% trans "Cancel" %}</a>
+    </form>
 
 {% endblock %}

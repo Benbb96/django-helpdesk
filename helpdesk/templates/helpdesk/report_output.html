@@ -1,122 +1,139 @@
-{% extends "helpdesk/base.html" %}{% load i18n %}
-{% load static from staticfiles %}
+{% extends "helpdesk/base.html" %}
+{% load static i18n %}
 
 {% block helpdesk_title %}{% trans "Reports &amp; Statistics" %}{% endblock %}
 
-{% block helpdesk_head %}
+{% block helpdesk_body %}
+    <div class="page-title">
+        <div class="h4 title_left">
+            <a href="{% url 'helpdesk:report_index' %}">
+                <i class="fas fa-chevron-circle-left"></i>
+                {% trans "Reports &amp; Statistics" %}
+            </a>
+        </div>
+    </div>
 
-    <!-- Flot Charts JavaScript -->
-    <script src="/static/helpdesk/vendor/flot/excanvas.min.js"></script>
-    <script src="/static/helpdesk/vendor/flot/jquery.flot.js"></script>
-    <script src="/static/helpdesk/vendor/flot/jquery.flot.categories.js"></script>
-    <script src="/static/helpdesk/vendor/flot/jquery.flot.pie.js"></script>
-    <script src="/static/helpdesk/vendor/flot/jquery.flot.resize.js"></script>
-    <script src="/static/helpdesk/vendor/flot/jquery.flot.time.js"></script>
-    <script src="/static/helpdesk/vendor/flot-tooltip/jquery.flot.tooltip.min.js"></script>
+    <div class="clearfix"></div>
 
-    <!-- Morris Charts JavaScript -->
-    {% if helpdesk_settings.HELPDESK_USE_CDN %}
-    <script src="//cdnjs.cloudflare.com/ajax/libs/raphael/2.1.0/raphael-min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/morris.js/0.5.1/morris.min.js"></script>
-    {% else %}
-    <script src="{% static 'helpdesk/vendor/raphael/raphael.min.js' %}"></script>
-    <script src="{% static 'helpdesk/vendor/morrisjs/morris.min.js' %}"></script>
-    {% endif %}
+    <div class="row">
+        <div class="col-sm-6 col-xs-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>Filtrer la période</h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                        <li><a class="collapse-link"><i class="fas fa-chevron-up"></i></a></li>
+                    </ul>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    {% include 'base/components/date_range_picker_filter.html' %}
+                </div>
+            </div>
+        </div>
 
+        <div class="col-sm-6 col-xs-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>{% trans 'Saved Queries' %}</h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                        <li><a class="collapse-link"><i class="fas fa-chevron-up"></i></a></li>
+                    </ul>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    {% if user_saved_queries_ %}
+                        <p>{% trans "You can run this query on filtered data by using one of your saved queries." %}</p>
+                        <form method='GET' action='./'>
+                            <label for='saved_query'>{% trans "Select Query:" %}</label>
+                            <select name='saved_query'>
+                                <option value="">--------</option>{% for q in user_saved_queries_ %}
+                                <option value="{{ q.id }}"{% ifequal saved_query q %}
+                                        selected{% endifequal %}>{{ q.title }}</option>{% endfor %}
+                            </select>
+                            <input class="btn btn-primary" type='submit' value='{% trans "Filter Report" %}'>
+                        </form>
+                    {% else %}
+                        <p>{% trans "Want to filter this report to just show a subset of data? Go to the Ticket List, filter your query, and save your query." %}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="x_panel">
+                <div class="x_title">
+                    <h2>{{ title }}</h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                        <li>
+                            <a href="#">{{ ticket_count }} tickets pris en compte</a>
+                        </li>
+                        <li class="divider"></li>
+                        <li><a class="collapse-link"><i class="fas fa-chevron-up"></i></a></li>
+                    </ul>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered table-hover">
+                            <thead>
+                            <tr>{% for h in headings %}
+                                <th>{% if forloop.first %}{{ h|title }}{% else %}{{ h }}{% endif %}</th>{% endfor %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for d in data %}
+                                <tr class="row_{% cycle 'odd' 'even' %}">
+                                    {% for f in d %}
+                                        <td class="report">{{ f }}</td>{% endfor %}
+                                </tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="flot-chart">
+                        <div class="flot-chart-content" id="chart-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
-{% block helpdesk_body %}
-<h2>{% trans "Reports &amp; Statistics" %}</h2>
-
-<div class="row">
-                <div class="col-lg-12">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            {% trans 'Saved Queries' %}
-                        </div>
-                        <!-- /.panel-heading -->
-                        <div class="panel-body">
-{% if user_saved_queries_ %}
-    <p>{% trans "You can run this query on filtered data by using one of your saved queries." %}</p>
-    <form method='GET' action='./'>
-        <label for='saved_query'>{% trans "Select Query:" %}</label>
-        <select name='saved_query'>
-            <option value="">--------</option>{% for q in user_saved_queries_ %}
-            <option value="{{ q.id }}"{% ifequal saved_query q %} selected{% endifequal %}>{{ q.title }}</option>{% endfor %}
-        </select>
-        <input class="btn btn-primary" type='submit' value='{% trans "Filter Report" %}'>
-    </form>
-{% else %}
-    <p>{% trans "Want to filter this report to just show a subset of data? Go to the Ticket List, filter your query, and save your query." %}</p>
-{% endif %}
-                        </div>
-                        <!-- /.panel-body -->
-                    </div>
-                    <!-- /.panel -->
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-lg-12">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            {{ title }}
-                        </div>
-                        <!-- /.panel-heading -->
-                        <div class="panel-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-bordered table-hover">
-                                    <thead>
-                                        <tr>{% for h in headings %}
-                                            <th>{% if forloop.first %}{{ h|title }}{% else %}{{ h }}{% endif %}</th>{% endfor %}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for d in data %}<tr class='row_{% cycle 'odd' 'even' %}'>
-                                            {% for f in d %}<td class='report'>{{ f }}</td>{% endfor %}
-                                        </tr>{% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- /.table-responsive -->
-                            <div class="flot-chart">
-                                <div class="flot-chart-content" id="chart-content"></div>
-                            </div>
-                        </div>
-                        <!-- /.panel-body -->
-                    </div>
-                    <!-- /.panel -->
-                </div>
-            </div>
-
-{% if charttype == "date" %}
-<script type='text/javascript'>
-
-Morris.Line({
-  element: 'chart-content',
-  data: {% autoescape on %}{{ morrisjs_data|safe }}{% endautoescape %},
-  xkey: 'x',
-  ykeys: [{% for d in data %}{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-  labels: [{% for n in series_names %}"{{ n }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-  xLabels: "month"
-});
-
-</script>
-{% endif %}
-{% if charttype == "bar" %}
-<script type='text/javascript'>
-
-Morris.Bar({
-  element: 'chart-content',
-  data: {% autoescape on %}{{ morrisjs_data|safe }}{% endautoescape %},
-  xkey: 'x',
-  ykeys: [{% for d in data %}{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-  labels: [{% for n in series_names %}"{{ n }}"{% if not forloop.last %}, {% endif %}{% endfor %}]
-});
-
-</script>
-{% endif %}
-
-
-
+{% block custom_javascripts %}
+    <script src="{% static 'helpdesk/js/filter_date_column.js' %}"></script>
+    {% if data %}
+        <!-- Flot Charts JavaScript -->
+        <script src="{% static 'helpdesk/vendor/flot/excanvas.min.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/flot/jquery.flot.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/flot/jquery.flot.categories.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/flot/jquery.flot.pie.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/flot/jquery.flot.resize.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/flot/jquery.flot.time.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/flot-tooltip/jquery.flot.tooltip.min.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/raphael/raphael.min.js' %}"></script>
+        <script src="{% static 'helpdesk/vendor/morrisjs/morris.min.js' %}"></script>
+        <script>
+            {% if chart_type == "date" %}
+                Morris.Line({
+                    element: 'chart-content',
+                    data: {% autoescape on %}{{ morrisjs_data|safe }}{% endautoescape %},
+                    xkey: 'x',
+                    ykeys: [{% for d in data|slice:":-1" %}{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    labels: [{% for n in series_names %}"{{ n }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    xLabels: "month",
+                    resize: true
+                });
+            {% elif chart_type == "bar" %}
+                Morris.Bar({
+                    element: 'chart-content',
+                    data: {% autoescape on %}{{ morrisjs_data|safe }}{% endautoescape %},
+                    xkey: 'x',
+                    ykeys: [{% for d in data|slice:":-1" %}{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    labels: [{% for n in series_names %}"{{ n }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    resize: true
+                });
+            {% endif %}
+        </script>
+    {% endif %}
 {% endblock %}

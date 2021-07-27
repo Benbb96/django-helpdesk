@@ -1,0 +1,29 @@
+{% load i18n %}
+
+<p id='ShowFileUploadPara'>
+    <button class="btn btn-warning btn-sm" id='ShowFileUpload'>
+        {% trans "Attach File(s) &raquo;" %}
+    </button>
+</p>
+
+<div id='FileUpload' style='display: none;'>
+    <div class="form-group">
+        <label for='id_file'>{% trans "Attach a File" %}</label>
+        <div class="add_file_fields_wrap">
+            <p>
+                <label class='btn btn-primary btn-sm btn-file'>
+                    Upload... <input type="file" name='attachment' id='file0' style='display: none;'/>
+                </label>
+                <span id='selectedfilename0'>
+                    {% trans 'No files selected.' %}
+                </span>
+            </p>
+        </div>
+        <div>
+            <button class="add_file_field_button btn btn-success btn-sm">
+                {% trans "Add Another File" %}
+                <i class="fas fa-plus-circle"></i>
+            </button>
+        </div>
+    </div>
+</div>
