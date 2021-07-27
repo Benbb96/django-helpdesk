@@ -8,7 +8,7 @@
         <div class="page-title">
             <div class="h4 title_left">
                 <a href="{% url 'helpdesk:generic_incident_list' %}">
-                    <i class="fa fa-chevron-circle-left"></i> Retour à la liste des incidents
+                    <i class="fas fa-chevron-circle-left"></i> Retour à la liste des incidents
                 </a>
             </div>
         </div>
@@ -41,20 +41,20 @@
                     <li class="divider"></li>
                     <li>
                         <a href="{% url 'helpdesk:generic_incident_update' generic_incident.id %}">
-                            <i class="fa fa-edit"></i>
+                            <i class="fas fa-edit"></i>
                             Editer l'incident
                         </a>
                     </li>
                     <li class="divider"></li>
                     <li>
                         <a href="{% url 'helpdesk:generic_incident_delete' generic_incident.id %}">
-                            <i class="fa fa-trash"></i>
+                            <i class="fas fa-trash"></i>
                             Supprimer l'incident
                         </a>
                     </li>
                     <li class="divider"></li>
                 {% endif %}
-                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                <li><a class="collapse-link"><i class="fas fa-chevron-up"></i></a></li>
             </ul>
             <div class="clearfix"></div>
         </div>
