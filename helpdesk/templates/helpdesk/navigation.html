@@ -76,7 +76,7 @@
                         {% endif %}
                         <li class="divider"></li>
                         {% if user.is_superuser %}
-                        <li><a href='{% url 'helpdesk:system_settings' %}'><i class="fas fa-gears fa-fw"></i> {% trans "System Settings" %}</a></li>
+                        <li><a href='{% url 'helpdesk:system_settings' %}'><i class="fas fa-cogs fa-fw"></i> {% trans "System Settings" %}</a></li>
                         <li class="divider"></li>
                         {% endif %}
                         <li><a href="{% url 'helpdesk:logout' %}"><i class="fas fa-sign-out-alt fa-fw"></i> {% trans "Logout" %}</a>

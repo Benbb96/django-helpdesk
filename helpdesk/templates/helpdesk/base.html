@@ -15,36 +15,11 @@
     <!-- Custom CSS -->
     <link href="{% static 'helpdesk/dist/css/sb-admin-2.css' %}" rel="stylesheet">
     <link rel='stylesheet' href='{% static "helpdesk/helpdesk-extend.css" %}' type='text/css' media="screen">
-    <!-- Custom Fonts -->
-    <link href="{% static 'helpdesk/vendor/font-awesome/css/font-awesome.min.css' %}" rel="stylesheet" type="text/css">
 
     <!-- RSS -->
     <link rel='alternate' href='{% url 'helpdesk:rss_user' user.get_username %}' type='application/rss+xml' title='{% trans "My Open Tickets" %}' />
     <link rel='alternate' href='{% url 'helpdesk:rss_activity' %}' type='application/rss+xml' title='{% trans "All Recent Activity" %}' />
     <link rel='alternate' href='{% url 'helpdesk:rss_unassigned' %}' type='application/rss+xml' title='{% trans "Unassigned Tickets" %}' />
-
-    <style type="text/css">
-    /* hide google translate top bar */
-    .goog-te-banner-frame {display: none !important;}
-    .goog-te-balloon-frame {display: none !important;}
-    /* hide google translate tooltips (generated for every translated item) */
-    .goog-tooltip {display: none !important; }
-    </style>
-
-    <style type="text/css">
-    /* header */
-    #dropdown li.headerlink { width: auto; float: left; text-align: center; }
-
-    /* query list */
-    #dropdown li.headerlink ul {    display: none;
-                                    text-align: left;
-                                    position: absolute;
-                                    padding: 5px;
-                                    z-index: 2; }
-    /* query entries */
-    #dropdown li.headerlink:hover ul { display: block; width: auto; }
-    #dropdown li.headerlink:hover ul li { padding: 5px; margin: 1px; float: none; display: block; }
-    </style>
 
     {% block helpdesk_head %}{% endblock %}
 {% endblock %}
