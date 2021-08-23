@@ -39,7 +39,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils.translation import ugettext as _
-from django.utils import encoding, six, timezone
+from django.utils import encoding, timezone
 
 from helpdesk import settings
 from helpdesk.lib import send_templated_mail, safe_template_context, process_attachments
@@ -151,8 +151,6 @@ def process_queue(q, logger):
                                 addr=q.socks_proxy_host,
                                 port=q.socks_proxy_port)
         socket.socket = socks.socksocket
-    elif six.PY2:
-        socket.socket = socket._socketobject
 
     email_box_type = settings.QUEUE_EMAIL_BOX_TYPE or q.email_box_type
 
@@ -180,7 +178,7 @@ def process_queue(q, logger):
         logger.info("Received %d messages from POP3 server" % len(messagesInfo))
 
         for msgRaw in messagesInfo:
-            if six.PY3 and type(msgRaw) is bytes:
+            if type(msgRaw) is bytes:
                 # in py3, msgRaw may be a bytes object, decode to str
                 try:
                     msg = msgRaw.decode("utf-8")
@@ -193,14 +191,11 @@ def process_queue(q, logger):
             msgNum = msg.split(" ")[0]
             logger.info("Processing message %s" % msgNum)
 
-            if six.PY2:
-                full_message = encoding.force_text("\n".join(server.retr(msgNum)[1]), errors='replace')
+            raw_content = server.retr(msgNum)[1]
+            if type(raw_content[0]) is bytes:
+                full_message = "\n".join([elm.decode('utf-8') for elm in raw_content])
             else:
-                raw_content = server.retr(msgNum)[1]
-                if type(raw_content[0]) is bytes:
-                    full_message = "\n".join([elm.decode('utf-8') for elm in raw_content])
-                else:
-                    full_message = encoding.force_text("\n".join(raw_content), errors='replace')
+                full_message = encoding.force_text("\n".join(raw_content), errors='replace')
             ticket = ticket_from_message(message=full_message, queue=q, logger=logger)
 
             if ticket:
@@ -326,7 +321,7 @@ def is_autoreply(message):
 
 def ticket_from_message(message, queue, logger):
     # 'message' must be an RFC822 formatted message.
-    message = email.message_from_string(message) if six.PY3 else email.message_from_string(message.encode('utf-8'))
+    message = email.message_from_string(message)
     subject = message.get('subject', _('Comment from e-mail'))
     subject = decode_mail_headers(decode_unknown(message.get_charset(), subject))
     for affix in STRIPPED_SUBJECT_STRINGS:
