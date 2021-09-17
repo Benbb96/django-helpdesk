@@ -433,6 +433,25 @@ class SimpleUserMail(models.Model):
     def __str__(self):
         return self.email
 
+    def convert_into_user(self):
+        """
+        Create a new user and add it to customer (must be set to work) and finally delete the simple user mail
+
+        :return: the created user
+        :rtype: User
+        :raises ValueError: if customer is not set
+        """
+        if not self.customer:
+            raise ValueError("Impossible de convertir le simple utilisateur si le champ client n'est pas renseigné.")
+
+        user = User.objects.create(
+            username=self.customer.get_new_username(),
+            email=self.email
+        )
+        user.groups.add(self.customer.group)
+        self.delete()
+        return user
+
 
 class TicketQuerySet(models.QuerySet):
     def opened(self):
