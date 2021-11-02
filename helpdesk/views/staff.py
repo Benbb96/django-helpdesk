@@ -2104,7 +2104,7 @@ def save_query(request):
 
     query = SavedSearch.objects.create(title=title, shared=shared, query=query_encoded, user=request.user)
 
-    return redirect(f'reverse("helpdesk:list")?saved_query={query.id}')
+    return redirect(query)
 
 
 @staff_member_required
