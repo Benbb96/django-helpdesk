@@ -25,6 +25,8 @@
                             </a>
                         </li>
                         <li class="divider"></li>
+                    {% endif %}
+                    {% if request.user.employee.is_ipexia_member %}
                         <li>
                             <a href="{% url 'helpdesk:edit' ticket.id %}">
                                 <i class="fas fa-pencil-alt"></i>
@@ -32,6 +34,8 @@
                             </a>
                         </li>
                         <li class="divider"></li>
+                    {% endif %}
+                    {% if request.user.is_staff %}
                         <li>
                             <a href="{% url 'helpdesk:delete' ticket.id %}">
                                 <i class="far fa-trash-alt"></i>

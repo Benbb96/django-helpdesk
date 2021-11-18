@@ -631,7 +631,6 @@ def choose_customer_for_ticket(request, ticket_id, customer_id):
     return redirect(ticket)
 
 
-@login_required
 @ipexia_protected()
 def update_ticket(request, ticket_id, append_signature=True, public=False):
     if not (public or (
@@ -1410,7 +1409,7 @@ def ticket_list(request):
     ))
 
 
-@staff_member_required
+@ipexia_protected()
 def edit_ticket(request, ticket_id):
     ticket = get_object_or_404(Ticket, id=ticket_id)
     if not _has_access_to_queue(request.user, ticket.queue):
