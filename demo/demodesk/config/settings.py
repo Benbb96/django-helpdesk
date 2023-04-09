@@ -52,10 +52,6 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.humanize',
     'bootstrap4form',
-    'account',  # Required by pinax-teams
-    'pinax.invitations',  # required by pinax-teams
-    'pinax.teams',  # team support
-    'reversion',  # required by pinax-teams
     'helpdesk',  # This is us!
     'rest_framework',  # required for the API
 ]
@@ -70,7 +66,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'demo.demodesk.config.urls'
+ROOT_URLCONF = 'demodesk.config.urls'
 
 TEMPLATES = [
     {
@@ -89,7 +85,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'demo.demodesk.config.wsgi.application'
+WSGI_APPLICATION = 'demodesk.config.wsgi.application'
 
 
 # django-helpdesk configuration settings
@@ -242,3 +238,8 @@ try:
     from .local_settings import *
 except ImportError:
     pass
+
+# Disable Pinax Team
+HELPDESK_TEAMS_MODEL = 'auth.User'
+HELPDESK_TEAMS_MIGRATION_DEPENDENCIES = []
+HELPDESK_KBITEM_TEAM_GETTER = lambda _: None
