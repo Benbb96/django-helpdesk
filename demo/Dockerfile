@@ -5,11 +5,13 @@ ENV PYTHONUNBUFFERED=1
 
 RUN pip install --upgrade pip
 RUN pip install django-helpdesk
+RUN pip install whitenoise[brotli]
 RUN pip uninstall pinax_teams -y
 
 WORKDIR /usr/src/app
 COPY . .
 
+RUN python manage.py collectstatic --noinput
 RUN python manage.py migrate --noinput
 RUN python manage.py loaddata emailtemplate.json
 RUN python manage.py loaddata demo.json

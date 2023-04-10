@@ -1,20 +1,7 @@
-"""
-Django settings for django-helpdesk demodesk project.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/1.11/topics/settings/
-
-For the full list of settings and their values, see
-https://docs.djangoproject.com/en/1.11/ref/settings/
-"""
-
-
 import os
-
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -30,18 +17,12 @@ RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# SECURITY WARNING: you probably want to configure your server
-# to use HTTPS with secure cookies, then you'd want to set
-# the following settings:
-#
-#SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-#SESSION_COOKIE_SECURE = True
-#CSRF_COOKIE_SECURE = True
-#
-# We leave them commented out here because most likely for
-# an internal demo you don't need such security, but please
-# remember when setting up your own development / production server!
-
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_HTTPONLY = True
 
 # Application definition
 
@@ -55,12 +36,13 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.humanize',
     'bootstrap4form',
-    'helpdesk',  # This is us!
-    'rest_framework',  # required for the API
+    'helpdesk',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -89,7 +71,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'demodesk.config.wsgi.application'
-
 
 # django-helpdesk configuration settings
 # You can override django-helpdesk's defaults by redefining them here.
@@ -141,7 +122,6 @@ DATABASES = {
     }
 }
 
-
 # Sites
 # - this allows hosting of more than one site from a single server,
 #   in practice you can probably just leave this default if you only
@@ -150,19 +130,10 @@ DATABASES = {
 
 SITE_ID = 1
 
-
 # Sessions
 # https://docs.djangoproject.com/en/1.11/topics/http/sessions
 
 SESSION_COOKIE_AGE = 86400  # = 1 day
-
-# For better default security, set these cookie flags, but
-# these are likely to cause problems when testing locally
-#CSRF_COOKIE_SECURE = True
-#SESSION_COOKIE_SECURE = True
-#CSRF_COOKIE_HTTPONLY = True
-#SESSION_COOKIE_HTTPONLY = True
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
@@ -192,9 +163,9 @@ SERVER_EMAIL = 'helpdesk@example.com'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # If you want to test sending real emails, uncomment and modify the following:
-#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-#EMAIL_HOST = 'smtp.example.com'
-#EMAIL_PORT = '25'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.example.com'
+# EMAIL_PORT = '25'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
@@ -213,13 +184,19 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
 # static root needs to be defined in order to use collectstatic
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+if not DEBUG:
+    STORAGES = {
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 # MEDIA_ROOT is where media uploads are stored.
 # We set this to a directory to host file attachments created
@@ -232,7 +209,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # - This is only necessary to make the demo project work, not needed for
 # your own projects unless you make your own fixtures
 FIXTURE_DIRS = [os.path.join(BASE_DIR, 'fixtures')]
-
 
 # for Django 3.2+, set default for autofields:
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
