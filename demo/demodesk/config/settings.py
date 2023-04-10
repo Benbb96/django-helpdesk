@@ -19,10 +19,10 @@ if RENDER_EXTERNAL_HOSTNAME:
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    # SESSION_COOKIE_SECURE = True
-    # CSRF_COOKIE_SECURE = True
-    # CSRF_COOKIE_HTTPONLY = True
-    # SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_HTTPONLY = True
 
 # Application definition
 
@@ -191,12 +191,12 @@ STATIC_URL = '/static/'
 # static root needs to be defined in order to use collectstatic
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-if not DEBUG:
-    STORAGES = {
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
+# if not DEBUG:
+#     STORAGES = {
+#         "staticfiles": {
+#             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+#         },
+#     }
 
 # MEDIA_ROOT is where media uploads are stored.
 # We set this to a directory to host file attachments created
