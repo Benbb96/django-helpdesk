@@ -222,3 +222,24 @@ except ImportError:
 HELPDESK_TEAMS_MODEL = 'auth.User'
 HELPDESK_TEAMS_MIGRATION_DEPENDENCIES = []
 HELPDESK_KBITEM_TEAM_GETTER = lambda _: None
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}
