@@ -10,7 +10,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SECRET_KEY', default='_crkn1+fnzu5$vns_-d+^ayiq%z4k*s!!ag0!mfy36(y!vrazd')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = 'RENDER' not in os.environ
+DEBUG = False
 
 ALLOWED_HOSTS = []
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
@@ -36,13 +36,17 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.humanize',
     'bootstrap4form',
-    'helpdesk',
+    'account',
+    'pinax.invitations',
+    'pinax.teams',
+    'reversion',
     'rest_framework',
+    'django_cleanup.apps.CleanupConfig',
+    'helpdesk',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -191,13 +195,6 @@ STATIC_URL = '/static/'
 # static root needs to be defined in order to use collectstatic
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-# if not DEBUG:
-#     STORAGES = {
-#         "staticfiles": {
-#             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-#         },
-#     }
-
 # MEDIA_ROOT is where media uploads are stored.
 # We set this to a directory to host file attachments created
 # with tickets.
@@ -217,11 +214,6 @@ try:
     from .local_settings import *
 except ImportError:
     pass
-
-# Disable Pinax Team
-HELPDESK_TEAMS_MODEL = 'auth.User'
-HELPDESK_TEAMS_MIGRATION_DEPENDENCIES = []
-HELPDESK_KBITEM_TEAM_GETTER = lambda _: None
 
 LOGGING = {
     'version': 1,
