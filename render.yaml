@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: demodesk
+    env: python
+    plan: free
+    region: frankfurt
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn demo.demodesk.config.wsgi:application"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.3
