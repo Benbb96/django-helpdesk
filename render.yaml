@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: demodesk
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: render
+    buildCommand: ./build.sh
+    startCommand: gunicorn demodesk.config.wsgi:application
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: demodesk.config.settings_render
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.13"
